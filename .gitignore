@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /Freecost/Resources/Raw/gfyfoodcost-firebase-adminsdk-fbsvc-cee0d30bfe.json
+/Freecost/Resources/Raw/new_firebase_credentials.json
