@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.ColumnMappingPage"
+             Title="Column Mapping">
+    <ScrollView>
+        <VerticalStackLayout>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="10" Padding="10">
+                    <Label Text="Map Name" />
+                    <Entry x:Name="MapNameEntry" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="10" Padding="10">
+                    <Label Text="Supplier Name" />
+                    <Entry x:Name="SupplierNameEntry" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="10" Padding="10">
+                    <Label Text="Application Fields" FontAttributes="Bold" />
+                    <CollectionView x:Name="AppFieldsCollection" HeightRequest="300">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Label Text="{Binding .}">
+                                    <Label.GestureRecognizers>
+                                        <DropGestureRecognizer Drop="OnDrop" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="10" Padding="10">
+                    <Label Text="Vendor Columns" FontAttributes="Bold" />
+                    <CollectionView x:Name="VendorColumnsCollection" HeightRequest="300">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Label Text="{Binding .}">
+                                    <Label.GestureRecognizers>
+                                        <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStarting" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="10" Padding="10">
+                    <Label Text="Current Mappings" FontAttributes="Bold" />
+                    <ListView x:Name="MappingsListView" HeightRequest="300">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <ViewCell>
+                                    <StackLayout Orientation="Horizontal">
+                                        <Label Text="{Binding Key}" />
+                                        <Label Text=" -> " />
+                                        <Label Text="{Binding Value}" />
+                                    </StackLayout>
+                                </ViewCell>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </VerticalStackLayout>
+            </Grid>
+
+            <VerticalStackLayout Padding="10">
+                <Label Text="Pack Column" />
+                <Picker x:Name="PackColumnPicker" />
+                <Label Text="Size Column" />
+                <Picker x:Name="SizeColumnPicker" />
+                <Label Text="Unit Column" />
+                <Picker x:Name="UnitColumnPicker" />
+                <Label Text="Combined Quantity/Unit Column" />
+                <Picker x:Name="CombinedQuantityUnitColumnPicker" />
+                <Label Text="Split Character" />
+                <Entry x:Name="SplitCharacterEntry" />
+            </VerticalStackLayout>
+
+            <Button Grid.Row="2" Grid.ColumnSpan="3" Text="Save Map" Clicked="OnSaveMapClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

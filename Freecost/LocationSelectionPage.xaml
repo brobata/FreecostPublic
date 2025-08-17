@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.LocationSelectionPage"
+             Shell.NavBarIsVisible="False">
+    <ScrollView>
+        <VerticalStackLayout
+            Spacing="20"
+            Padding="30,0"
+            VerticalOptions="Center"
+            HorizontalOptions="Center"
+            WidthRequest="400">
+
+            <Label
+                Text="Select a Location"
+                Style="{StaticResource Headline}"
+                Margin="0,0,0,30" />
+
+            <Label Text="Available Locations" />
+            <Border>
+                <Picker
+                    x:Name="LocationPicker"
+                    Title="Choose a location" />
+            </Border>
+
+            <Button
+                x:Name="ConfirmButton"
+                Text="Confirm Selection"
+                Clicked="OnConfirmClicked"
+                HorizontalOptions="Fill"
+                Margin="0,20,0,0"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

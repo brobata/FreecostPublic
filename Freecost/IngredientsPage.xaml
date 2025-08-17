@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Freecost"
+             x:Class="Freecost.IngredientsPage"
+             Title="Ingredients">
+    <Grid RowDefinitions="Auto, Auto, Auto, *">
+        <Label Grid.Row="0" Text="Ingredients" FontSize="Large" HorizontalOptions="Center" />
+        <StackLayout Grid.Row="1" Orientation="Horizontal" HorizontalOptions="Center">
+            <Button Text="Add" Clicked="OnAddIngredientClicked" />
+            <Button Text="Edit" Clicked="OnEditIngredientClicked" />
+            <Button Text="Delete" Clicked="OnDeleteIngredientClicked" />
+            <Button Text="Bulk Import" Clicked="OnBulkImportClicked" />
+        </StackLayout>
+
+        <ScrollView Grid.Row="2" Grid.RowSpan="2" Orientation="Horizontal">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" x:Name="HeaderGrid" ColumnSpacing="10" Padding="12,12,12,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300" />
+                        <ColumnDefinition Width="250" />
+                        <ColumnDefinition Width="250" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="100" />
+                        <ColumnDefinition Width="100" />
+                        <ColumnDefinition Width="100" />
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Column="0" Text="Name" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="ItemName" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Grid.Column="1" Text="Alias" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="AliasName" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Grid.Column="2" Text="Supplier" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SupplierName" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Grid.Column="3" Text="SKU" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SKU" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Grid.Column="4" Text="Price" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CasePrice" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Grid.Column="5" Text="Quantity" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CaseQuantity" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Grid.Column="6" Text="Unit" FontAttributes="Bold">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Unit" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </Grid>
+
+                <CollectionView Grid.Row="1" x:Name="IngredientsCollectionView"
+                                SelectionMode="Multiple"
+                                SelectionChanged="OnSelectionChanged">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid x:Name="ItemGrid" ColumnSpacing="10" Padding="12,0">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup Name="CommonStates">
+                                        <VisualState Name="Normal" />
+                                        <VisualState Name="Selected">
+                                            <VisualState.Setters>
+                                                <Setter Property="BackgroundColor" Value="LightSkyBlue" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="300" />
+                                    <ColumnDefinition Width="250" />
+                                    <ColumnDefinition Width="250" />
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="100" />
+                                </Grid.ColumnDefinitions>
+                                <Label Grid.Column="0" Text="{Binding ItemName}" LineBreakMode="CharacterWrap" />
+                                <Label Grid.Column="1" Text="{Binding AliasName}" LineBreakMode="CharacterWrap" />
+                                <Label Grid.Column="2" Text="{Binding SupplierName}" LineBreakMode="CharacterWrap" />
+                                <Label Grid.Column="3" Text="{Binding SKU}" LineBreakMode="CharacterWrap" />
+                                <Label Grid.Column="4" Text="{Binding CasePrice, StringFormat='{0:C}'}" />
+                                <Label Grid.Column="5" Text="{Binding CaseQuantity, StringFormat='{0:F2}'}" />
+                                <Label Grid.Column="6" Text="{Binding Unit}" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </ScrollView>
+    </Grid>
+</ContentPage>

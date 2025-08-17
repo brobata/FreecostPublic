@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Freecost"
+             x:Class="Freecost.EntreesPage"
+             Title="Entrees">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="2*" />
+        </Grid.ColumnDefinitions>
+
+        <StackLayout Grid.Column="0">
+            <Label Text="Entrees" FontSize="Large" HorizontalOptions="Center" />
+            <StackLayout Orientation="Horizontal" HorizontalOptions="Center">
+                <Button Text="Add" Clicked="OnAddEntreeClicked" />
+                <Button Text="Edit" Clicked="OnEditEntreeClicked" />
+                <Button Text="Delete" Clicked="OnDeleteEntreeClicked" />
+            </StackLayout>
+            <ScrollView Orientation="Horizontal">
+                <ListView x:Name="EntreesListView"
+                          ItemSelected="OnEntreeSelected">
+                    <ListView.Header>
+                        <Grid ColumnSpacing="10" Padding="12,12,12,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="100" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Text="Name" FontAttributes="Bold">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Name" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                            <Label Grid.Column="1" Text="Yield" FontAttributes="Bold">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Yield" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                            <Label Grid.Column="2" Text="Yield Unit" FontAttributes="Bold">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="YieldUnit" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                            <Label Grid.Column="3" Text="Food Cost" FontAttributes="Bold">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="FoodCost" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                            <Label Grid.Column="4" Text="Price" FontAttributes="Bold">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Price" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </Grid>
+                    </ListView.Header>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <ViewCell>
+                                <Grid ColumnSpacing="10" Padding="12,0">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroup Name="CommonStates">
+                                            <VisualState Name="Normal" />
+                                            <VisualState Name="Selected">
+                                                <VisualState.Setters>
+                                                    <Setter Property="BackgroundColor" Value="LightSkyBlue" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                        </VisualStateGroup>
+                                    </VisualStateManager.VisualStateGroups>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="300" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="100" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label Grid.Column="0" Text="{Binding Name}" LineBreakMode="CharacterWrap" />
+                                    <Label Grid.Column="1" Text="{Binding Yield, StringFormat='{0:F2}'}" />
+                                    <Label Grid.Column="2" Text="{Binding YieldUnit}" />
+                                    <Label Grid.Column="3" Text="{Binding FoodCost, StringFormat='{0:C}'}" />
+                                    <Label Grid.Column="4" Text="{Binding Price, StringFormat='{0:C}'}" />
+                                </Grid>
+                            </ViewCell>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </ScrollView>
+        </StackLayout>
+
+        <ScrollView Grid.Column="1">
+            <VerticalStackLayout Padding="10" Spacing="10">
+                <Label x:Name="SelectEntreeLabel" Text="Select an entree to see details" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="True" />
+                <VerticalStackLayout x:Name="EntreeDetailsView" IsVisible="False">
+                    <Image x:Name="EntreeImage" HeightRequest="200" Aspect="AspectFit" />
+                    <Label Text="Components" FontAttributes="Bold" />
+                    <Label x:Name="ComponentsLabel" />
+                    <Label Text="Allergens" FontAttributes="Bold" />
+                    <Label x:Name="AllergensLabel" />
+                    <Label Text="Directions" FontAttributes="Bold" />
+                    <Label x:Name="DirectionsLabel" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

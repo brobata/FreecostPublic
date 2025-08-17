@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.AddEntreePage"
+             Title="Add Entree">
+    <ScrollView>
+        <VerticalStackLayout Spacing="15" Padding="20">
+
+            <!-- Entree Details Frame -->
+            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Entree Details" FontAttributes="Bold" FontSize="Medium" />
+                    <Label Text="Entree Name" />
+                    <Entry x:Name="EntreeNameEntry" />
+                    <Label Text="Yield" />
+                    <Entry x:Name="YieldEntry" Keyboard="Numeric" />
+                    <Label Text="Yield Unit" />
+                    <Picker x:Name="YieldUnitPicker" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Allergens Frame -->
+            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Allergens" FontAttributes="Bold" FontSize="Medium" />
+                    <CollectionView x:Name="AllergensCollection" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Components Frame -->
+            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Components" FontAttributes="Bold" FontSize="Medium" />
+                    <CollectionView x:Name="ComponentsCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Delete" BackgroundColor="Red" CommandParameter="{Binding .}" Clicked="OnDeleteComponentClicked" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Grid Padding="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Label Grid.Column="0" Text="{Binding Name}" />
+                                        <Label Grid.Column="1" Text="{Binding Quantity}" />
+                                        <Label Grid.Column="2" Text="{Binding Unit}" />
+                                    </Grid>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10" VerticalOptions="End">
+                        <VerticalStackLayout Grid.Column="0" Spacing="5">
+                            <Label Text="Component" />
+                            <Picker x:Name="ComponentPicker" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="5">
+                            <Label Text="Qty" />
+                            <Entry x:Name="QuantityEntry" Keyboard="Numeric" WidthRequest="70" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="2" Spacing="5">
+                            <Label Text="Unit" />
+                            <Picker x:Name="UnitPicker" WidthRequest="100" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="3" Text="Add" Clicked="OnAddComponentClicked" VerticalOptions="End" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Directions Frame -->
+            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Directions" FontAttributes="Bold" FontSize="Medium" />
+                    <Editor x:Name="DirectionsEditor" HeightRequest="200" />
+                    <Button Text="Add Step" Clicked="OnAddStepClicked" HorizontalOptions="Start" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Action Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Save" Clicked="OnSaveClicked" />
+                <Button Grid.Column="1" Text="Cancel" Clicked="OnCancelClicked" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.LoginPage"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <Image Source="logo.png" Aspect="AspectFill" />
+
+        <!-- The Grid will allow us to move the login form to the bottom -->
+        <Grid VerticalOptions="End" HorizontalOptions="Center">
+            <!-- 80% opaque dark background -->
+            <Frame BackgroundColor="#CC121212"
+                   CornerRadius="0"
+                   Padding="30"
+                   Margin="20"
+                   HasShadow="True"
+                   WidthRequest="350">
+                <VerticalStackLayout
+                    Spacing="20">
+
+                <!-- "Welcome" text removed as per user request -->
+
+                <Label Text="Email Address" />
+                <Border>
+                    <Entry
+                        x:Name="EmailEntry"
+                        Placeholder="you@example.com"
+                        Keyboard="Email" />
+                </Border>
+
+                <Label Text="Password" />
+                <Border>
+                    <Entry
+                        x:Name="PasswordEntry"
+                        Placeholder="Enter your password"
+                        IsPassword="True" />
+                </Border>
+
+                <HorizontalStackLayout Spacing="10" Margin="0,10,0,10">
+                    <CheckBox x:Name="RememberMeCheckBox" />
+                    <Label Text="Remember Me" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <Button
+                    x:Name="LoginButton"
+                    Text="Login"
+                    Clicked="OnLoginClicked"
+                    HorizontalOptions="Fill"
+                    Style="{StaticResource EdgyButtonStyle}" />
+
+            </VerticalStackLayout>
+        </Frame>
+    </Grid>
+    </Grid>
+</ContentPage>
