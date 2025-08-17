@@ -8,6 +8,17 @@ namespace Freecost;
 
 public partial class AddEntreePage : ContentPage
 {
+    public class AllergenSelection
+    {
+        public string Name { get; set; }
+        public bool IsSelected { get; set; }
+
+        public AllergenSelection()
+        {
+            Name = string.Empty;
+        }
+    }
+
     public Entree EntreeData { get; private set; }
     public List<EntreeComponent> EntreeComponents { get; private set; }
 
@@ -15,6 +26,7 @@ public partial class AddEntreePage : ContentPage
     private FirestoreDb? db = FirestoreService.Db;
     private List<IngredientCsvRecord>? masterIngredientList;
     private List<string> topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
+    private List<AllergenSelection> Allergens { get; set; }
 
     public AddEntreePage(string currentRestaurantId, Entree? entreeToEdit = null)
     {
@@ -24,7 +36,9 @@ public partial class AddEntreePage : ContentPage
         EntreeData = entreeToEdit ?? new Entree();
         EntreeComponents = entreeToEdit?.Components ?? new List<EntreeComponent>();
 
-        //AllergensCollection.ItemsSource = topAllergens;
+        Allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = EntreeData.Allergens?.Contains(a) ?? false }).ToList();
+        AllergensCollection.ItemsSource = Allergens;
+
         LoadMasterIngredients();
         LoadUnitDropdowns();
 
@@ -87,7 +101,7 @@ public partial class AddEntreePage : ContentPage
         EntreeData.Directions = DirectionsEditor.Text;
         EntreeData.Components = EntreeComponents;
         EntreeData.RestaurantId = restaurantId;
-        //EntreeData.Allergens = allergensCheckedListBox.CheckedItems.Cast<string>().ToList();
+        EntreeData.Allergens = Allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
 
         db = FirestoreService.Db;
         if (db == null || restaurantId == null) return;

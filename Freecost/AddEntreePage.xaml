@@ -23,7 +23,16 @@
             <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Allergens" FontAttributes="Bold" FontSize="Medium" />
-                    <CollectionView x:Name="AllergensCollection" />
+                    <CollectionView x:Name="AllergensCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <HorizontalStackLayout Spacing="10">
+                                    <CheckBox IsChecked="{Binding IsSelected}" />
+                                    <Label Text="{Binding Name}" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
                 </VerticalStackLayout>
             </Frame>
 
