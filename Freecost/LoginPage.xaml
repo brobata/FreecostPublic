@@ -2,39 +2,34 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Freecost.LoginPage"
-             Shell.NavBarIsVisible="False">
+             Shell.NavBarIsVisible="False"
+             BackgroundImageSource="logo.png">
 
-    <Grid>
-        <Image Source="logo.png" Aspect="AspectFill" />
+    <Grid VerticalOptions="End" HorizontalOptions="Center">
 
-        <!-- The Grid will allow us to move the login form to the bottom -->
-        <Grid VerticalOptions="End" HorizontalOptions="Center">
-            <!-- 80% opaque dark background -->
-            <Frame BackgroundColor="#CC121212"
-                   CornerRadius="0"
-                   Padding="30"
-                   Margin="20"
-                   HasShadow="True"
-                   WidthRequest="350">
-                <VerticalStackLayout
-                    Spacing="20">
-
-                <!-- "Welcome" text removed as per user request -->
+        <Frame BackgroundColor="#CC121212"
+               CornerRadius="0"
+               Padding="30"
+               Margin="20"
+               HasShadow="True"
+               WidthRequest="350">
+            <VerticalStackLayout
+                Spacing="20">
 
                 <Label Text="Email Address" />
                 <Border>
                     <Entry
-                        x:Name="EmailEntry"
-                        Placeholder="you@example.com"
-                        Keyboard="Email" />
+                    x:Name="EmailEntry"
+                    Placeholder="you@example.com"
+                    Keyboard="Email" />
                 </Border>
 
                 <Label Text="Password" />
                 <Border>
                     <Entry
-                        x:Name="PasswordEntry"
-                        Placeholder="Enter your password"
-                        IsPassword="True" />
+                    x:Name="PasswordEntry"
+                    Placeholder="Enter your password"
+                    IsPassword="True" />
                 </Border>
 
                 <HorizontalStackLayout Spacing="10" Margin="0,10,0,10">
@@ -43,14 +38,13 @@
                 </HorizontalStackLayout>
 
                 <Button
-                    x:Name="LoginButton"
-                    Text="Login"
-                    Clicked="OnLoginClicked"
-                    HorizontalOptions="Fill"
-                    Style="{StaticResource EdgyButtonStyle}" />
+                x:Name="LoginButton"
+                Text="Login"
+                Clicked="OnLoginClicked"
+                HorizontalOptions="Fill"
+                Style="{StaticResource EdgyButtonStyle}" />
 
             </VerticalStackLayout>
         </Frame>
-    </Grid>
     </Grid>
 </ContentPage>

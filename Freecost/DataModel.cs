@@ -169,10 +169,16 @@ namespace Freecost
             get => _isSelected;
             set
             {
-                _isSelected = value;
-                OnPropertyChanged();
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
             }
         }
+
+        // This property is needed for the alternating row color trigger
+        public bool IsEven { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 

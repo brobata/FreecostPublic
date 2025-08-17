@@ -6,7 +6,7 @@
     <ScrollView>
         <VerticalStackLayout Spacing="20" Padding="20">
 
-            <Frame Style="{StaticResource CardView}">
+            <Frame Style="{StaticResource Frame}">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Recipe Details" Style="{StaticResource SubHeadline}" />
                     <Entry x:Name="RecipeNameEntry" Placeholder="Recipe Name" />
@@ -17,17 +17,33 @@
                 </VerticalStackLayout>
             </Frame>
 
-            <Frame Style="{StaticResource CardView}">
+            <Frame Style="{StaticResource Frame}">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Allergens" Style="{StaticResource SubHeadline}" />
-                    <FlexLayout x:Name="AllergensLayout" Wrap="Wrap" />
+                    <FlexLayout x:Name="AllergensLayout" Wrap="Wrap" AlignItems="Start" JustifyContent="Start" />
                 </VerticalStackLayout>
             </Frame>
 
-            <Frame Style="{StaticResource CardView}">
+            <Frame Style="{StaticResource Frame}">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Ingredients" Style="{StaticResource SubHeadline}" />
-                    <CollectionView x:Name="IngredientsCollection">
+                    <CollectionView x:Name="IngredientsCollection" HeightRequest="200">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Delete" BackgroundColor="Red" CommandParameter="{Binding .}" Clicked="OnDeleteIngredientClicked" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Grid Padding="10" ColumnDefinitions="*,Auto,Auto">
+                                        <Label Grid.Column="0" Text="{Binding Name}" VerticalOptions="Center"/>
+                                        <Label Grid.Column="1" Text="{Binding Quantity}" VerticalOptions="Center" Margin="0,0,5,0"/>
+                                        <Label Grid.Column="2" Text="{Binding Unit}" VerticalOptions="Center"/>
+                                    </Grid>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
                     </CollectionView>
                     <HorizontalStackLayout Spacing="10">
                         <Picker x:Name="IngredientPicker" Title="Ingredient" HorizontalOptions="FillAndExpand" />
@@ -35,6 +51,14 @@
                         <Picker x:Name="UnitPicker" Title="Unit" WidthRequest="100" />
                         <Button Text="Add" Clicked="OnAddIngredientClicked" />
                     </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame Style="{StaticResource Frame}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Directions" Style="{StaticResource SubHeadline}" />
+                    <Editor x:Name="DirectionsEditor" HeightRequest="200" />
+                    <Button Text="Add Step" Clicked="OnAddStepClicked" HorizontalOptions="Start" />
                 </VerticalStackLayout>
             </Frame>
 

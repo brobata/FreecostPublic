@@ -36,7 +36,24 @@ public partial class AddRecipePage : ContentPage
 
         var topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
         Allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = RecipeData.Allergens?.Contains(a) ?? false }).ToList();
-        AllergensCollection.ItemsSource = Allergens;
+
+        // Populate the allergen chips
+        foreach (var allergen in Allergens)
+        {
+            var chip = new Button
+            {
+                Text = allergen.Name,
+                Style = (Style)Application.Current.Resources["ChipStyle"],
+                BackgroundColor = allergen.IsSelected ? (Color)Application.Current.Resources["Accent"] : (Color)Application.Current.Resources["Secondary"]
+            };
+            chip.Clicked += (s, e) =>
+            {
+                allergen.IsSelected = !allergen.IsSelected;
+                chip.BackgroundColor = allergen.IsSelected ? (Color)Application.Current.Resources["Accent"] : (Color)Application.Current.Resources["Secondary"];
+            };
+            AllergensLayout.Children.Add(chip);
+        }
+
 
         LoadMasterIngredients();
         LoadUnitDropdowns();

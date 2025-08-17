@@ -1,606 +1,517 @@
-using System;
+using Microsoft.Maui.Controls;
+using Google.Cloud.Firestore;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Globalization;
+using System.IO;
 using CsvHelper;
-using Google.Cloud.Firestore;
-using Microsoft.Maui.Storage;
-using Microsoft.Maui.ApplicationModel.DataTransfer;
 using OfficeOpenXml;
 using System.Text.RegularExpressions;
-using System.Text;
-using Microsoft.Maui.Controls;
 
-namespace Freecost;
-
-public partial class IngredientsPage : ContentPage
+namespace Freecost
 {
-    private FirestoreDb? db;
-    private string _currentSortColumn = "ItemName";
-    private bool _isSortAscending = true;
-
-	public IngredientsPage()
-	{
-		InitializeComponent();
-        SessionService.OnRestaurantChanged += (s, e) => LoadData();
-        CreateInitialMaps();
-	}
-
-    private async void CreateInitialMaps()
+    public partial class IngredientsPage : ContentPage
     {
-        db = FirestoreService.Db;
-        if (db == null) return;
+        private FirestoreDb? db;
+        private string? restaurantId;
+        private List<IngredientDisplayRecord> _ingredients = new List<IngredientDisplayRecord>();
+        private List<IngredientDisplayRecord> _selectedIngredients = new List<IngredientDisplayRecord>();
+        private string _currentSortColumn = "ItemName";
+        private bool _isSortAscending = true;
 
-        var mapsCollection = db.Collection("importMaps");
-
-        var syscoQuery = await mapsCollection.WhereEqualTo("MapName", "Sysco").GetSnapshotAsync();
-        if (syscoQuery.Documents.Count == 0)
+        public IngredientsPage()
         {
-            var syscoMap = new ImportMap
-            {
-                MapName = "Sysco",
-                SupplierName = "Sysco",
-                FieldMappings = new Dictionary<string, string>
-                {
-                    { "ItemName", "Desc" },
-                    { "CasePrice", "Case $" },
-                    { "SKU", "SUPC" }
-                },
-                PackColumn = "Pack",
-                SizeColumn = "Size",
-                HeaderRow = 2,
-                Delimiter = "\t"
-            };
-            await mapsCollection.AddAsync(syscoMap);
+            InitializeComponent();
+            SessionService.OnRestaurantChanged += (s, e) => LoadData();
+            CreateInitialMaps();
         }
 
-        var benEKeithQuery = await mapsCollection.WhereEqualTo("MapName", "Ben E. Keith").GetSnapshotAsync();
-        if (benEKeithQuery.Documents.Count == 0)
+        protected override void OnAppearing()
         {
-            var benEKeithMap = new ImportMap
-            {
-                MapName = "Ben E. Keith",
-                SupplierName = "Ben E. Keith",
-                FieldMappings = new Dictionary<string, string>
-                {
-                    { "ItemName", "Item Name" },
-                    { "CasePrice", "Price" },
-                    { "SKU", "Item #" }
-                },
-                CombinedQuantityUnitColumn = "Pack / Size",
-                SplitCharacter = "/",
-                HeaderRow = 1,
-                Delimiter = ","
-            };
-            await mapsCollection.AddAsync(benEKeithMap);
-        }
-
-        var usFoodsQuery = await mapsCollection.WhereEqualTo("MapName", "US Foods").GetSnapshotAsync();
-        if (usFoodsQuery.Documents.Count == 0)
-        {
-            var usFoodsMap = new ImportMap
-            {
-                MapName = "US Foods",
-                SupplierName = "US Foods",
-                FieldMappings = new Dictionary<string, string>
-                {
-                    { "ItemName", "Product Description" },
-                    { "CasePrice", "Product Price" },
-                    { "SKU", "Product Number" }
-                },
-                CombinedQuantityUnitColumn = "Product Package Size",
-                SplitCharacter = " ",
-                HeaderRow = 1,
-                Delimiter = ","
-            };
-            await mapsCollection.AddAsync(usFoodsMap);
-        }
-    }
-
-    protected override void OnAppearing()
-    {
-        base.OnAppearing();
-        LoadData();
-        //LoadColumnWidths();
-    }
-
-    protected override void OnDisappearing()
-    {
-        base.OnDisappearing();
-        //SaveColumnWidths();
-    }
-
-    //private void LoadColumnWidths()
-    //{
-    //    NameColumn.Width = new GridLength(Preferences.Get("NameColumnWidth", 1.0), GridUnitType.Star);
-    //    AliasColumn.Width = new GridLength(Preferences.Get("AliasColumnWidth", 1.0), GridUnitType.Star);
-    //    SupplierColumn.Width = new GridLength(Preferences.Get("SupplierColumnWidth", 1.0), GridUnitType.Star);
-    //    SkuColumn.Width = new GridLength(Preferences.Get("SkuColumnWidth", 150.0));
-    //    PriceColumn.Width = new GridLength(Preferences.Get("PriceColumnWidth", 100.0));
-    //    QuantityColumn.Width = new GridLength(Preferences.Get("QuantityColumnWidth", 150.0));
-    //    UnitColumn.Width = new GridLength(Preferences.Get("UnitColumnWidth", 100.0));
-    //}
-
-    //private void SaveColumnWidths()
-    //{
-    //    Preferences.Set("NameColumnWidth", NameColumn.Width.Value);
-    //    Preferences.Set("AliasColumnWidth", AliasColumn.Width.Value);
-    //    Preferences.Set("SupplierColumnWidth", SupplierColumn.Width.Value);
-    //    Preferences.Set("SkuColumnWidth", SkuColumn.Width.Value);
-    //    Preferences.Set("PriceColumnWidth", PriceColumn.Width.Value);
-    //    Preferences.Set("QuantityColumnWidth", QuantityColumn.Width.Value);
-    //    Preferences.Set("UnitColumnWidth", UnitColumn.Width.Value);
-    //}
-
-    private void LoadData()
-    {
-        Task.Run(async () => await LoadIngredients());
-    }
-
-    private async Task LoadIngredients()
-    {
-        db = FirestoreService.Db;
-        var restaurantId = SessionService.CurrentRestaurant?.Id;
-        if (db == null || restaurantId == null) return;
-
-        var ingredients = new List<IngredientDisplayRecord>();
-        var query = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-        var snapshot = await query.GetSnapshotAsync();
-        var documents = snapshot.Documents.ToList();
-
-        for (int i = 0; i < documents.Count; i++)
-        {
-            var document = documents[i];
-            var ingredient = document.ConvertTo<IngredientCsvRecord>();
-            var displayRecord = new IngredientDisplayRecord
-            {
-                Id = document.Id,
-                SupplierName = ingredient.SupplierName,
-                ItemName = ingredient.ItemName,
-                AliasName = ingredient.AliasName,
-                CasePrice = ingredient.CasePrice,
-                CaseQuantity = ingredient.CaseQuantity,
-                Unit = ingredient.Unit,
-                SKU = ingredient.SKU
-            };
-            ingredients.Add(displayRecord);
-        }
-
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            IngredientsCollectionView.ItemsSource = ingredients;
-        });
-    }
-
-	private async void OnAddIngredientClicked(object sender, EventArgs e)
-	{
-		await Navigation.PushAsync(new AddIngredientPage());
-	}
-
-    private async void OnEditIngredientClicked(object sender, EventArgs e)
-    {
-        if (IngredientsCollectionView.SelectedItems.Count != 1)
-        {
-            await DisplayAlert("No Ingredient Selected", "Please select exactly one ingredient to edit.", "OK");
-            return;
-        }
-        await Navigation.PushAsync(new AddIngredientPage(IngredientsCollectionView.SelectedItems[0] as IngredientDisplayRecord));
-    }
-
-    private async void OnDeleteIngredientClicked(object sender, EventArgs e)
-    {
-        var selectedItems = IngredientsCollectionView.SelectedItems;
-        if (selectedItems == null || selectedItems.Count == 0)
-        {
-            await DisplayAlert("No Ingredients Selected", "Please select one or more ingredients to delete.", "OK");
-            return;
-        }
-
-        bool answer = await DisplayAlert("Confirm Delete", $"Are you sure you want to delete {selectedItems.Count} ingredients?", "Yes", "No");
-        if (answer)
-        {
-            var restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (db == null || restaurantId == null) return;
-
-            var batch = db.StartBatch();
-            foreach (var item in selectedItems)
-            {
-                var ingredient = item as IngredientDisplayRecord;
-                if (ingredient != null)
-                {
-                    var docRef = db.Collection("restaurants").Document(restaurantId).Collection("ingredients").Document(ingredient.Id);
-                    batch.Delete(docRef);
-                }
-            }
-            await batch.CommitAsync();
+            base.OnAppearing();
             LoadData();
         }
-    }
 
-    private async void OnBulkImportClicked(object sender, EventArgs e)
-    {
-        try
+        private void LoadData()
         {
-            var result = await FilePicker.PickAsync(new PickOptions
-            {
-                PickerTitle = "Please select a csv or excel file",
-                FileTypes = new FilePickerFileType(
-                    new Dictionary<DevicePlatform, IEnumerable<string>>
-                    {
-                        { DevicePlatform.WinUI, new[] { ".csv", ".xlsx" } },
-                        { DevicePlatform.macOS, new[] { "csv", "xlsx" } },
-                    })
-            });
+            restaurantId = SessionService.CurrentRestaurant?.Id;
+            Task.Run(async () => await LoadIngredients());
+        }
 
-            if (result == null) return;
-
-            var restaurantId = SessionService.CurrentRestaurant?.Id;
+        private async Task LoadIngredients()
+        {
+            db = FirestoreService.Db;
             if (db == null || restaurantId == null) return;
 
-            var records = new List<IngredientCsvRecord>();
-            using (var stream = await result.OpenReadAsync())
+            var ingredientsList = new List<IngredientDisplayRecord>();
+            var query = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
+            var snapshot = await query.GetSnapshotAsync();
+            var documents = snapshot.Documents.ToList();
+
+            for (int i = 0; i < documents.Count; i++)
             {
-                var mapsSnapshot = await db.Collection("importMaps").GetSnapshotAsync();
-                var maps = mapsSnapshot.Documents.Select(doc => doc.ConvertTo<ImportMap>()).ToList();
-
-                if (result.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                var document = documents[i];
+                var ingredient = document.ConvertTo<IngredientCsvRecord>();
+                var displayRecord = new IngredientDisplayRecord
                 {
-                    var (selectedMap, headerRow, headers) = FindBestMap(stream, maps);
+                    Id = document.Id,
+                    SupplierName = ingredient.SupplierName,
+                    ItemName = ingredient.ItemName,
+                    AliasName = ingredient.AliasName,
+                    CasePrice = ingredient.CasePrice,
+                    CaseQuantity = ingredient.CaseQuantity,
+                    Unit = ingredient.Unit,
+                    SKU = ingredient.SKU
+                };
+                ingredientsList.Add(displayRecord);
+            }
 
-                    if (selectedMap == null)
+            _ingredients = ingredientsList;
+            SortIngredients();
+            MainThread.BeginInvokeOnMainThread(PopulateGrid);
+        }
+
+        private void PopulateGrid()
+        {
+            while (IngredientsGrid.RowDefinitions.Count > 1)
+            {
+                IngredientsGrid.RowDefinitions.RemoveAt(1);
+            }
+            var childrenToRemove = IngredientsGrid.Children.Where(c => Grid.GetRow((BindableObject)c) > 0).ToList();
+            foreach (var child in childrenToRemove)
+            {
+                IngredientsGrid.Remove(child);
+            }
+
+            for (int i = 0; i < _ingredients.Count; i++)
+            {
+                var ingredient = _ingredients[i];
+                ingredient.IsEven = i % 2 == 0;
+
+                IngredientsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                var tapGesture = new TapGestureRecognizer();
+                tapGesture.Tapped += OnRowTapped;
+                tapGesture.CommandParameter = ingredient;
+
+                var backgroundGrid = new Grid
+                {
+                    BackgroundColor = ingredient.IsSelected ? (Color)Application.Current.Resources["Accent"] : (ingredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]),
+                    GestureRecognizers = { tapGesture }
+                };
+                IngredientsGrid.Add(backgroundGrid, 0, i + 1);
+                Grid.SetColumnSpan(backgroundGrid, 7);
+
+                IngredientsGrid.Add(CreateDataLabel(ingredient.ItemName, TextAlignment.Start), 0, i + 1);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.AliasName, TextAlignment.Start), 1, i + 1);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.SupplierName, TextAlignment.Start), 2, i + 1);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.SKU, TextAlignment.Start), 3, i + 1);
+                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:C}", ingredient.CasePrice), TextAlignment.End), 4, i + 1);
+                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:F2}", ingredient.CaseQuantity), TextAlignment.End), 5, i + 1);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.Unit, TextAlignment.Start), 6, i + 1);
+
+                var bottomBorder = new BoxView { HeightRequest = 1, Color = (Color)Application.Current.Resources["BorderColor"], VerticalOptions = LayoutOptions.End };
+                IngredientsGrid.Add(bottomBorder, 0, i + 1);
+                Grid.SetColumnSpan(bottomBorder, 7);
+            }
+        }
+
+        private Label CreateDataLabel(string? text, TextAlignment alignment)
+        {
+            return new Label
+            {
+                Text = text ?? string.Empty,
+                VerticalOptions = LayoutOptions.Center,
+                HorizontalOptions = LayoutOptions.Fill,
+                HorizontalTextAlignment = alignment,
+                Padding = new Thickness(5, 10)
+            };
+        }
+
+        private void OnRowTapped(object? sender, TappedEventArgs e)
+        {
+            if (e.Parameter is IngredientDisplayRecord tappedIngredient)
+            {
+                // Toggle the selection state
+                tappedIngredient.IsSelected = !tappedIngredient.IsSelected;
+
+                // Add or remove from the selection list
+                if (tappedIngredient.IsSelected)
+                {
+                    if (!_selectedIngredients.Contains(tappedIngredient))
+                        _selectedIngredients.Add(tappedIngredient);
+                }
+                else
+                {
+                    _selectedIngredients.Remove(tappedIngredient);
+                }
+
+                // Redraw the grid to show the updated selection state
+                PopulateGrid();
+            }
+        }
+
+        private async void OnAddIngredientClicked(object sender, EventArgs e)
+        {
+            await Navigation.PushAsync(new AddIngredientPage());
+        }
+
+        private async void OnEditIngredientClicked(object sender, EventArgs e)
+        {
+            if (_selectedIngredients.Count != 1)
+            {
+                await DisplayAlert("Selection Error", "Please select exactly one ingredient to edit.", "OK");
+                return;
+            }
+            await Navigation.PushAsync(new AddIngredientPage(_selectedIngredients.First()));
+        }
+
+        private async void OnDeleteIngredientClicked(object sender, EventArgs e)
+        {
+            if (_selectedIngredients.Count == 0)
+            {
+                await DisplayAlert("No Ingredients Selected", "Please select one or more ingredients to delete.", "OK");
+                return;
+            }
+
+            bool answer = await DisplayAlert("Confirm Delete", $"Are you sure you want to delete {_selectedIngredients.Count} ingredient(s)?", "Yes", "No");
+            if (answer)
+            {
+                if (db == null || restaurantId == null) return;
+
+                var batch = db.StartBatch();
+                foreach (var ingredient in _selectedIngredients)
+                {
+                    if (ingredient.Id != null)
                     {
-                        await DisplayAlert("No Matching Map", "Could not determine an import map for this file. Please check the file format or set up a map in the Import Map Manager.", "OK");
-                        return;
+                        var docRef = db.Collection("restaurants").Document(restaurantId).Collection("ingredients").Document(ingredient.Id);
+                        batch.Delete(docRef);
                     }
+                }
+                await batch.CommitAsync();
+                _selectedIngredients.Clear();
+                LoadData();
+            }
+        }
 
-                    selectedMap.HeaderRow = headerRow;
+        private void SortIngredients()
+        {
+            if (_ingredients == null) return;
 
-                    var config = new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
+            var sorted = _isSortAscending
+                ? _ingredients.OrderBy(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList()
+                : _ingredients.OrderByDescending(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList();
+
+            _ingredients = sorted;
+        }
+
+        private void OnSortClicked(object? sender, TappedEventArgs e)
+        {
+            if (e.Parameter is string newSortColumn)
+            {
+                if (_currentSortColumn == newSortColumn)
+                {
+                    _isSortAscending = !_isSortAscending;
+                }
+                else
+                {
+                    _currentSortColumn = newSortColumn;
+                    _isSortAscending = true;
+                }
+
+                SortIngredients();
+                PopulateGrid();
+            }
+        }
+
+        #region Bulk Import Logic
+        private async void CreateInitialMaps()
+        {
+            db = FirestoreService.Db;
+            if (db == null) return;
+
+            var mapsCollection = db.Collection("importMaps");
+
+            var syscoQuery = await mapsCollection.WhereEqualTo("MapName", "Sysco").GetSnapshotAsync();
+            if (syscoQuery.Documents.Count == 0)
+            {
+                var syscoMap = new ImportMap { MapName = "Sysco", SupplierName = "Sysco", FieldMappings = new Dictionary<string, string> { { "ItemName", "Desc" }, { "CasePrice", "Case $" }, { "SKU", "SUPC" } }, PackColumn = "Pack", SizeColumn = "Size", HeaderRow = 2, Delimiter = "\t" };
+                await mapsCollection.AddAsync(syscoMap);
+            }
+
+            var benEKeithQuery = await mapsCollection.WhereEqualTo("MapName", "Ben E. Keith").GetSnapshotAsync();
+            if (benEKeithQuery.Documents.Count == 0)
+            {
+                var benEKeithMap = new ImportMap { MapName = "Ben E. Keith", SupplierName = "Ben E. Keith", FieldMappings = new Dictionary<string, string> { { "ItemName", "Item Name" }, { "CasePrice", "Price" }, { "SKU", "Item #" } }, CombinedQuantityUnitColumn = "Pack / Size", SplitCharacter = "/", HeaderRow = 1, Delimiter = "," };
+                await mapsCollection.AddAsync(benEKeithMap);
+            }
+
+            var usFoodsQuery = await mapsCollection.WhereEqualTo("MapName", "US Foods").GetSnapshotAsync();
+            if (usFoodsQuery.Documents.Count == 0)
+            {
+                var usFoodsMap = new ImportMap { MapName = "US Foods", SupplierName = "US Foods", FieldMappings = new Dictionary<string, string> { { "ItemName", "Product Description" }, { "CasePrice", "Product Price" }, { "SKU", "Product Number" } }, CombinedQuantityUnitColumn = "Product Package Size", SplitCharacter = " ", HeaderRow = 1, Delimiter = "," };
+                await mapsCollection.AddAsync(usFoodsMap);
+            }
+        }
+
+        private async void OnBulkImportClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                var result = await FilePicker.PickAsync(new PickOptions
+                {
+                    PickerTitle = "Please select a csv or excel file",
+                    FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>> { { DevicePlatform.WinUI, new[] { ".csv", ".xlsx" } }, { DevicePlatform.macOS, new[] { "csv", "xlsx" } }, })
+                });
+
+                if (result == null) return;
+                if (db == null || restaurantId == null) return;
+
+                var records = new List<IngredientCsvRecord>();
+                using (var stream = await result.OpenReadAsync())
+                {
+                    var mapsSnapshot = await db.Collection("importMaps").GetSnapshotAsync();
+                    var maps = mapsSnapshot.Documents.Select(doc => { var map = doc.ConvertTo<ImportMap>(); map.Id = doc.Id; return map; }).ToList();
+
+                    if (result.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                     {
-                        HasHeaderRecord = true,
-                        Delimiter = selectedMap.Delimiter ?? ",",
-                    };
-
-                    using (var reader = new StreamReader(stream))
-                    using (var csv = new CsvReader(reader, config))
+                        var (selectedMap, headerRow, headers) = FindBestMap(stream, maps);
+                        if (selectedMap == null)
+                        {
+                            await DisplayAlert("No Matching Map", "Could not determine an import map for this file.", "OK");
+                            return;
+                        }
+                        selectedMap.HeaderRow = headerRow;
+                        records = ProcessCsvStream(stream, selectedMap, headers);
+                    }
+                    else if (result.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
                     {
-                        for (int i = 1; i < selectedMap.HeaderRow; i++)
+                        using (var package = new ExcelPackage(stream))
                         {
-                            csv.Read();
-                        }
-
-                        var dataRows = new List<IDictionary<string, object>>();
-                        csv.Read();
-                        csv.ReadHeader();
-
-                        while (csv.Read())
-                        {
-                            var dict = new System.Dynamic.ExpandoObject() as IDictionary<string, object>;
-                            foreach (var header in headers)
+                            var (selectedMap, headerRow, headers) = FindBestMapForExcel(package, maps);
+                            if (selectedMap == null)
                             {
-                                dict[header] = csv.GetField(header);
+                                await DisplayAlert("No Matching Map", "Could not determine an import map for this Excel file.", "OK");
+                                return;
                             }
-                            dataRows.Add(dict);
-                        }
-
-                        using (var package = new ExcelPackage())
-                        {
-                            var worksheet = package.Workbook.Worksheets.Add("ConvertedCsv");
-                            for (int i = 0; i < headers.Count; i++)
-                            {
-                                worksheet.Cells[headerRow, i + 1].Value = headers[i];
-                            }
-                            for (int i = 0; i < dataRows.Count; i++)
-                            {
-                                var recordDict = dataRows[i];
-                                for (int j = 0; j < headers.Count; j++)
-                                {
-                                    worksheet.Cells[headerRow + i + 1, j + 1].Value = recordDict[headers[j]];
-                                }
-                            }
+                            selectedMap.HeaderRow = headerRow;
                             records = ProcessExcelPackage(package, headers, selectedMap);
                         }
                     }
                 }
-                else if (result.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+
+                if (records.Any())
                 {
-                    using (var package = new ExcelPackage(stream))
+                    var collection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
+                    var existingIngredientsSnapshot = await collection.GetSnapshotAsync();
+                    var existingIngredientsBySku = existingIngredientsSnapshot.Documents.Where(doc => doc.ContainsField("SKU") && !string.IsNullOrEmpty(doc.GetValue<string>("SKU"))).ToDictionary(doc => doc.GetValue<string>("SKU")!, doc => doc.Reference);
+                    int createdCount = 0;
+                    int updatedCount = 0;
+                    const int batchSize = 250;
+                    for (int i = 0; i < records.Count; i += batchSize)
                     {
-                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                        if (worksheet == null) return;
-
-                        ImportMap? excelBestMap = null;
-                        int excelBestHeaderRow = -1;
-                        int excelBestMatchCount = 0;
-                        List<string> excelBestHeaders = new List<string>();
-
-                        const int rowsToScan = 5;
-                        for (int i = 1; i <= rowsToScan; i++)
+                        var batch = db.StartBatch();
+                        var chunk = records.Skip(i).Take(batchSize);
+                        foreach (var record in chunk)
                         {
-                            if (i > worksheet.Dimension.End.Row) break;
-
-                            var potentialHeaders = new List<string>();
-                            for (int j = 1; j <= worksheet.Dimension.End.Column; j++)
+                            if (!string.IsNullOrEmpty(record.SKU) && existingIngredientsBySku.TryGetValue(record.SKU, out var existingDocRef))
                             {
-                                potentialHeaders.Add(worksheet.Cells[i, j].Text?.Trim() ?? string.Empty);
+                                batch.Update(existingDocRef, "CasePrice", record.CasePrice);
+                                updatedCount++;
                             }
-                            var lowerCaseHeaders = potentialHeaders.Select(h => h.ToLowerInvariant()).ToList();
-
-                            foreach (var map in maps)
+                            else
                             {
+                                var newDocRef = collection.Document();
+                                batch.Set(newDocRef, record);
+                                createdCount++;
+                            }
+                        }
+                        await batch.CommitAsync();
+                    }
+                    await DisplayAlert("Import Complete", $"{createdCount} ingredients created.\n{updatedCount} ingredients updated.", "OK");
+                    LoadData();
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Import Error", $"An unexpected error occurred: {ex.Message}", "OK");
+            }
+        }
+
+        private List<IngredientCsvRecord> ProcessCsvStream(Stream stream, ImportMap selectedMap, List<string> headers)
+        {
+            var config = new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true, Delimiter = selectedMap.Delimiter ?? "," };
+            using (var reader = new StreamReader(stream))
+            using (var csv = new CsvReader(reader, config))
+            {
+                for (int i = 1; i < selectedMap.HeaderRow; i++) { csv.Read(); }
+                var dataRows = new List<IDictionary<string, object>>();
+                csv.Read();
+                csv.ReadHeader();
+                while (csv.Read())
+                {
+                    var dict = new System.Dynamic.ExpandoObject() as IDictionary<string, object>;
+                    foreach (var header in headers) { dict[header] = csv.GetField(header); }
+                    dataRows.Add(dict);
+                }
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("ConvertedCsv");
+                    for (int i = 0; i < headers.Count; i++) { worksheet.Cells[selectedMap.HeaderRow, i + 1].Value = headers[i]; }
+                    for (int i = 0; i < dataRows.Count; i++)
+                    {
+                        var recordDict = dataRows[i];
+                        for (int j = 0; j < headers.Count; j++) { worksheet.Cells[selectedMap.HeaderRow + i + 1, j + 1].Value = recordDict[headers[j]]; }
+                    }
+                    return ProcessExcelPackage(package, headers, selectedMap);
+                }
+            }
+        }
+
+        private (ImportMap? map, int headerRow, List<string> headers) FindBestMap(Stream stream, List<ImportMap> maps)
+        {
+            ImportMap? bestMap = null;
+            int bestHeaderRow = -1;
+            int bestMatchCount = 0;
+            List<string> bestHeaders = new List<string>();
+            const int rowsToScan = 5;
+            var lines = new List<string>();
+            using (var reader = new StreamReader(stream, leaveOpen: true))
+            {
+                for (int i = 0; i < rowsToScan && !reader.EndOfStream; i++) { lines.Add(reader.ReadLine() ?? string.Empty); }
+            }
+            for (int i = 0; i < lines.Count; i++)
+            {
+                foreach (var map in maps)
+                {
+                    var config = new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = false, Delimiter = map.Delimiter ?? ",", TrimOptions = CsvHelper.Configuration.TrimOptions.Trim, };
+                    using (var reader = new StringReader(lines[i]))
+                    using (var csv = new CsvReader(reader, config))
+                    {
+                        if (csv.Read())
+                        {
+                            try
+                            {
+                                var potentialHeaders = new List<string>();
+                                for (int j = 0; j < csv.Parser.Count; j++) { potentialHeaders.Add(csv.GetField(j) ?? string.Empty); }
+                                var lowerCaseHeaders = potentialHeaders.Select(h => h.ToLowerInvariant()).ToList();
                                 if (map.FieldMappings != null && map.FieldMappings.Any())
                                 {
                                     int matchCount = map.FieldMappings.Values.Count(v => !string.IsNullOrEmpty(v) && lowerCaseHeaders.Contains(v.Trim().ToLowerInvariant()));
-                                    if (matchCount > excelBestMatchCount)
-                                    {
-                                        excelBestMatchCount = matchCount;
-                                        excelBestMap = map;
-                                        excelBestHeaderRow = i;
-                                        excelBestHeaders = potentialHeaders;
-                                    }
+                                    if (matchCount > bestMatchCount) { bestMatchCount = matchCount; bestMap = map; bestHeaderRow = i + 1; bestHeaders = potentialHeaders; }
                                 }
                             }
+                            catch (CsvHelper.BadDataException) { }
                         }
-
-                        if (excelBestMap == null)
-                        {
-                            await DisplayAlert("No Matching Map", "Could not determine an import map for this Excel file.", "OK");
-                            return;
-                        }
-
-                        excelBestMap.HeaderRow = excelBestHeaderRow;
-                        records = ProcessExcelPackage(package, excelBestHeaders, excelBestMap);
                     }
                 }
             }
+            stream.Position = 0;
+            return bestMatchCount < 2 ? (null, -1, new List<string>()) : (bestMap, bestHeaderRow, bestHeaders);
+        }
 
-            if (records.Any())
+        private (ImportMap? map, int headerRow, List<string> headers) FindBestMapForExcel(ExcelPackage package, List<ImportMap> maps)
+        {
+            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+            if (worksheet == null) return (null, -1, new List<string>());
+
+            ImportMap? excelBestMap = null;
+            int excelBestHeaderRow = -1;
+            int excelBestMatchCount = 0;
+            List<string> excelBestHeaders = new List<string>();
+            const int rowsToScan = 5;
+            for (int i = 1; i <= rowsToScan && i <= worksheet.Dimension.End.Row; i++)
             {
-                var collection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-
-                // Fetch existing ingredients to check for duplicates by SKU
-                var existingIngredientsSnapshot = await collection.GetSnapshotAsync();
-                var existingIngredientsBySku = existingIngredientsSnapshot.Documents
-                    .Where(doc => doc.ContainsField("SKU") && !string.IsNullOrEmpty(doc.GetValue<string>("SKU")))
-                    .ToDictionary(doc => doc.GetValue<string>("SKU")!, doc => doc.Reference);
-
-                int createdCount = 0;
-                int updatedCount = 0;
-                const int batchSize = 250;
-
-                for (int i = 0; i < records.Count; i += batchSize)
+                var potentialHeaders = new List<string>();
+                for (int j = 1; j <= worksheet.Dimension.End.Column; j++) { potentialHeaders.Add(worksheet.Cells[i, j].Text?.Trim() ?? string.Empty); }
+                var lowerCaseHeaders = potentialHeaders.Select(h => h.ToLowerInvariant()).ToList();
+                foreach (var map in maps)
                 {
-                    var batch = db.StartBatch();
-                    var chunk = records.Skip(i).Take(batchSize);
-                    foreach (var record in chunk)
+                    if (map.FieldMappings != null && map.FieldMappings.Any())
                     {
-                        if (!string.IsNullOrEmpty(record.SKU) && existingIngredientsBySku.TryGetValue(record.SKU, out var existingDocRef))
+                        int matchCount = map.FieldMappings.Values.Count(v => !string.IsNullOrEmpty(v) && lowerCaseHeaders.Contains(v.Trim().ToLowerInvariant()));
+                        if (matchCount > excelBestMatchCount) { excelBestMatchCount = matchCount; excelBestMap = map; excelBestHeaderRow = i; excelBestHeaders = potentialHeaders; }
+                    }
+                }
+            }
+            return (excelBestMap, excelBestHeaderRow, excelBestHeaders);
+        }
+
+        private List<IngredientCsvRecord> ProcessExcelPackage(ExcelPackage package, List<string> headers, ImportMap selectedMap)
+        {
+            var records = new List<IngredientCsvRecord>();
+            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+            if (worksheet == null) return records;
+
+            var startRow = selectedMap.HeaderRow > 0 ? selectedMap.HeaderRow + 1 : 2;
+
+            for (int row = startRow; row <= worksheet.Dimension.End.Row; row++)
+            {
+                var record = new IngredientCsvRecord { SupplierName = selectedMap.SupplierName };
+                if (selectedMap.FieldMappings != null)
+                {
+                    if (selectedMap.FieldMappings.TryGetValue("ItemName", out var itemNameHeader) && itemNameHeader != null)
+                        record.ItemName = worksheet.Cells[row, headers.IndexOf(GetActualHeader(itemNameHeader, headers)) + 1].Text;
+                    if (selectedMap.FieldMappings.TryGetValue("AliasName", out var aliasNameHeader) && !string.IsNullOrEmpty(aliasNameHeader) && headers.IndexOf(GetActualHeader(aliasNameHeader, headers)) != -1)
+                        record.AliasName = worksheet.Cells[row, headers.IndexOf(GetActualHeader(aliasNameHeader, headers)) + 1].Text;
+                    else
+                        record.AliasName = string.Empty;
+                    if (selectedMap.FieldMappings.TryGetValue("CasePrice", out var casePriceHeader) && casePriceHeader != null)
+                    {
+                        if (double.TryParse(worksheet.Cells[row, headers.IndexOf(GetActualHeader(casePriceHeader, headers)) + 1].Text, NumberStyles.Currency, CultureInfo.GetCultureInfo("en-US"), out double price))
+                            record.CasePrice = price;
+                    }
+                    if (selectedMap.FieldMappings.TryGetValue("SKU", out var skuHeader) && skuHeader != null)
+                        record.SKU = worksheet.Cells[row, headers.IndexOf(GetActualHeader(skuHeader, headers)) + 1].Text;
+                }
+                if (!string.IsNullOrEmpty(selectedMap.CombinedQuantityUnitColumn) && !string.IsNullOrEmpty(selectedMap.SplitCharacter))
+                {
+                    var combined = worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.CombinedQuantityUnitColumn, headers)) + 1].Text;
+                    if (combined != null)
+                    {
+                        var parts = combined.Split(new[] { selectedMap.SplitCharacter }, StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length == 2)
                         {
-                            // Product exists, update its price
-                            batch.Update(existingDocRef, "CasePrice", record.CasePrice);
-                            updatedCount++;
+                            var quantityMatch = Regex.Match(parts[0], @"[\d\.]+");
+                            if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
+                                record.CaseQuantity = quantity;
+                            record.Unit = Regex.Replace(parts[1], @"[\d\.]+", "").Trim();
                         }
                         else
                         {
-                            // Product is new, create it
-                            var newDocRef = collection.Document();
-                            batch.Set(newDocRef, record);
-                            createdCount++;
+                            var quantityMatch = Regex.Match(combined, @"[\d\.]+");
+                            if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
+                                record.CaseQuantity = quantity;
+                            record.Unit = Regex.Replace(combined, @"[\d\.]+", "").Trim();
                         }
                     }
-                    await batch.CommitAsync();
                 }
-
-                await DisplayAlert("Import Complete", $"{createdCount} ingredients created.\n{updatedCount} ingredients updated.", "OK");
-                LoadData();
-            }
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Import Error", $"An unexpected error occurred: {ex.Message}", "OK");
-        }
-    }
-
-    private (ImportMap? map, int headerRow, List<string> headers) FindBestMap(Stream stream, List<ImportMap> maps)
-    {
-        ImportMap? bestMap = null;
-        int bestHeaderRow = -1;
-        int bestMatchCount = 0;
-        List<string> bestHeaders = new List<string>();
-
-        const int rowsToScan = 5;
-        var lines = new List<string>();
-        using (var reader = new StreamReader(stream, leaveOpen: true))
-        {
-            for (int i = 0; i < rowsToScan; i++)
-            {
-                if (reader.EndOfStream) break;
-                lines.Add(reader.ReadLine() ?? string.Empty);
-            }
-        }
-
-        for (int i = 0; i < lines.Count; i++)
-        {
-            foreach (var map in maps)
-            {
-            var config = new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                HasHeaderRecord = false,
-                Delimiter = map.Delimiter ?? ",",
-                TrimOptions = CsvHelper.Configuration.TrimOptions.Trim,
-            };
-
-            using (var reader = new StringReader(lines[i]))
-            using (var csv = new CsvReader(reader, config))
+                else if (!string.IsNullOrEmpty(selectedMap.PackColumn) && !string.IsNullOrEmpty(selectedMap.SizeColumn))
                 {
-                if (csv.Read())
+                    if (double.TryParse(worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.PackColumn, headers)) + 1].Text, out double pack))
                     {
-                    try
-                    {
-                        var potentialHeaders = new List<string>();
-                        // Manually read fields by index to avoid mapping errors
-                        for (int j = 0; j < csv.Parser.Count; j++)
+                        var size = worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.SizeColumn, headers)) + 1].Text;
+                        if (size != null)
                         {
-                            potentialHeaders.Add(csv.GetField(j) ?? string.Empty);
-                        }
-
-                        var lowerCaseHeaders = potentialHeaders.Select(h => h.ToLowerInvariant()).ToList();
-
-                        if (map.FieldMappings != null && map.FieldMappings.Any())
-                        {
-                            int matchCount = map.FieldMappings.Values.Count(v => !string.IsNullOrEmpty(v) && lowerCaseHeaders.Contains(v.Trim().ToLowerInvariant()));
-                            if (matchCount > bestMatchCount)
+                            var sizeMatch = Regex.Match(size, @"[\d\.]+");
+                            if (sizeMatch.Success && double.TryParse(sizeMatch.Value, out double sizeQuantity))
                             {
-                                bestMatchCount = matchCount;
-                                bestMap = map;
-                                bestHeaderRow = i + 1; // 1-based index
-                                bestHeaders = potentialHeaders;
+                                record.CaseQuantity = pack * sizeQuantity;
+                                record.Unit = Regex.Replace(size, @"[\d\.]+", "").Trim();
                             }
                         }
                     }
-                    catch (CsvHelper.BadDataException)
-                    {
-                        // This delimiter is likely incorrect for this line, so just continue
-                    }
-                    }
                 }
+                records.Add(record);
             }
+            return records;
         }
 
-        // Reset stream position for the actual processing
-        stream.Position = 0;
-
-        return bestMatchCount < 2 ? (null, -1, new List<string>()) : (bestMap, bestHeaderRow, bestHeaders);
-    }
-
-    private List<IngredientCsvRecord> ProcessExcelPackage(ExcelPackage package, List<string> headers, ImportMap selectedMap)
-    {
-        var records = new List<IngredientCsvRecord>();
-        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-        if (worksheet == null) return records;
-
-        var startRow = selectedMap.HeaderRow > 0 ? selectedMap.HeaderRow + 1 : 2;
-
-        for (int row = startRow; row <= worksheet.Dimension.End.Row; row++)
+        private string GetActualHeader(string headerName, List<string> headers)
         {
-            var record = new IngredientCsvRecord();
-            if (selectedMap.SupplierName != null) record.SupplierName = selectedMap.SupplierName;
-
-            if (selectedMap.FieldMappings != null)
-            {
-                if (selectedMap.FieldMappings.TryGetValue("ItemName", out var itemNameHeader) && itemNameHeader != null)
-                    record.ItemName = worksheet.Cells[row, headers.IndexOf(GetActualHeader(itemNameHeader, headers)) + 1].Text;
-
-                if (selectedMap.FieldMappings.TryGetValue("AliasName", out var aliasNameHeader) && !string.IsNullOrEmpty(aliasNameHeader) && headers.IndexOf(GetActualHeader(aliasNameHeader, headers)) != -1)
-                    record.AliasName = worksheet.Cells[row, headers.IndexOf(GetActualHeader(aliasNameHeader, headers)) + 1].Text;
-                else
-                    record.AliasName = string.Empty;
-
-                if (selectedMap.FieldMappings.TryGetValue("CasePrice", out var casePriceHeader) && casePriceHeader != null)
-                {
-                    if (double.TryParse(worksheet.Cells[row, headers.IndexOf(GetActualHeader(casePriceHeader, headers)) + 1].Text, NumberStyles.Currency, CultureInfo.GetCultureInfo("en-US"), out double price))
-                        record.CasePrice = price;
-                }
-
-                if (selectedMap.FieldMappings.TryGetValue("SKU", out var skuHeader) && skuHeader != null)
-                    record.SKU = worksheet.Cells[row, headers.IndexOf(GetActualHeader(skuHeader, headers)) + 1].Text;
-            }
-
-            if (!string.IsNullOrEmpty(selectedMap.CombinedQuantityUnitColumn) && !string.IsNullOrEmpty(selectedMap.SplitCharacter))
-            {
-                var combined = worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.CombinedQuantityUnitColumn, headers)) + 1].Text;
-                if (combined != null)
-                {
-                    var parts = combined.Split(new[] { selectedMap.SplitCharacter }, StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length == 2)
-                    {
-                        var quantityMatch = Regex.Match(parts[0], @"[\d\.]+");
-                        if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
-                            record.CaseQuantity = quantity;
-                        record.Unit = Regex.Replace(parts[1], @"[\d\.]+", "").Trim();
-                    }
-                    else
-                    {
-                        var quantityMatch = Regex.Match(combined, @"[\d\.]+");
-                        if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
-                            record.CaseQuantity = quantity;
-                        record.Unit = Regex.Replace(combined, @"[\d\.]+", "").Trim();
-                    }
-                }
-            }
-            else if (!string.IsNullOrEmpty(selectedMap.PackColumn) && !string.IsNullOrEmpty(selectedMap.SizeColumn))
-            {
-                if (double.TryParse(worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.PackColumn, headers)) + 1].Text, out double pack))
-                {
-                    var size = worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.SizeColumn, headers)) + 1].Text;
-                    if (size != null)
-                    {
-                        var sizeMatch = Regex.Match(size, @"[\d\.]+");
-                        if (sizeMatch.Success && double.TryParse(sizeMatch.Value, out double sizeQuantity))
-                        {
-                            record.CaseQuantity = pack * sizeQuantity;
-                            record.Unit = Regex.Replace(size, @"[\d\.]+", "").Trim();
-                        }
-                    }
-                }
-            }
-            records.Add(record);
+            return headers.FirstOrDefault(h => h.Trim().Equals(headerName, StringComparison.OrdinalIgnoreCase)) ?? headerName;
         }
-        return records;
-    }
-
-    private string GetActualHeader(string headerName, List<string> headers)
-    {
-        return headers.FirstOrDefault(h => h.Trim().Equals(headerName, StringComparison.OrdinalIgnoreCase)) ?? headerName;
-    }
-
-    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (e.PreviousSelection != null)
-        {
-            foreach (var item in e.PreviousSelection)
-            {
-                if (item is IngredientDisplayRecord record)
-                {
-                    record.IsSelected = false;
-                }
-            }
-        }
-        if (e.CurrentSelection != null)
-        {
-            foreach (var item in e.CurrentSelection)
-            {
-                if (item is IngredientDisplayRecord record)
-                {
-                    record.IsSelected = true;
-                }
-            }
-        }
-    }
-
-    private void OnSortClicked(object sender, TappedEventArgs e)
-    {
-        var newSortColumn = e.Parameter as string;
-        if (string.IsNullOrEmpty(newSortColumn)) return;
-
-        if (_currentSortColumn == newSortColumn)
-        {
-            _isSortAscending = !_isSortAscending;
-        }
-        else
-        {
-            _currentSortColumn = newSortColumn;
-            _isSortAscending = true;
-        }
-
-        if (IngredientsCollectionView.ItemsSource is not List<IngredientDisplayRecord> ingredients) return;
-
-        var sortedIngredients = _isSortAscending
-            ? ingredients.OrderBy(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList()
-            : ingredients.OrderByDescending(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList();
-
-        IngredientsCollectionView.ItemsSource = sortedIngredients;
+        #endregion
     }
 }
