@@ -19,7 +19,7 @@ namespace Freecost
 
             try
             {
-                string keyFileName = "gfyfoodcost-firebase-adminsdk-fbsvc-cee0d30bfe.json";
+                string keyFileName = "new_firebase_credentials.json";
                 using var stream = await FileSystem.OpenAppPackageFileAsync(keyFileName);
                 string tempPath = Path.Combine(FileSystem.AppDataDirectory, keyFileName);
 

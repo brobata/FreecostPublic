@@ -4,97 +4,42 @@
              x:Class="Freecost.AddRecipePage"
              Title="Add Recipe">
     <ScrollView>
-        <VerticalStackLayout Spacing="15" Padding="20">
+        <VerticalStackLayout Spacing="20" Padding="20">
 
-            <!-- Recipe Details Frame -->
-            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+            <Frame Style="{StaticResource CardView}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Recipe Details" FontAttributes="Bold" FontSize="Medium" />
-                    <Label Text="Recipe Name" />
-                    <Entry x:Name="RecipeNameEntry" />
-                    <Label Text="Yield" />
-                    <Entry x:Name="YieldEntry" Keyboard="Numeric" />
-                    <Label Text="Yield Unit" />
-                    <Picker x:Name="YieldUnitPicker" />
+                    <Label Text="Recipe Details" Style="{StaticResource SubHeadline}" />
+                    <Entry x:Name="RecipeNameEntry" Placeholder="Recipe Name" />
+                    <Grid ColumnDefinitions="*,*">
+                        <Entry Grid.Column="0" x:Name="YieldEntry" Placeholder="Yield" Keyboard="Numeric" />
+                        <Picker Grid.Column="1" x:Name="YieldUnitPicker" Title="Unit" />
+                    </Grid>
                 </VerticalStackLayout>
             </Frame>
 
-            <!-- Allergens Frame -->
-            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+            <Frame Style="{StaticResource CardView}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Allergens" FontAttributes="Bold" FontSize="Medium" />
-                    <CollectionView x:Name="AllergensCollection">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <HorizontalStackLayout Spacing="10">
-                                    <CheckBox IsChecked="{Binding IsSelected}" />
-                                    <Label Text="{Binding Name}" VerticalOptions="Center" />
-                                </HorizontalStackLayout>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                    <Label Text="Allergens" Style="{StaticResource SubHeadline}" />
+                    <FlexLayout x:Name="AllergensLayout" Wrap="Wrap" />
                 </VerticalStackLayout>
             </Frame>
 
-            <!-- Ingredients Frame -->
-            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+            <Frame Style="{StaticResource CardView}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Ingredients" FontAttributes="Bold" FontSize="Medium" />
+                    <Label Text="Ingredients" Style="{StaticResource SubHeadline}" />
                     <CollectionView x:Name="IngredientsCollection">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItem Text="Delete" BackgroundColor="Red" CommandParameter="{Binding .}" Clicked="OnDeleteIngredientClicked" />
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Grid Padding="10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Label Grid.Column="0" Text="{Binding Name}" />
-                                        <Label Grid.Column="1" Text="{Binding Quantity}" />
-                                        <Label Grid.Column="2" Text="{Binding Unit}" />
-                                    </Grid>
-                                </SwipeView>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
                     </CollectionView>
-                    <HorizontalStackLayout Spacing="10" VerticalOptions="End">
-                        <VerticalStackLayout Spacing="5">
-                            <Label Text="Ingredient" />
-                            <Picker x:Name="IngredientPicker" HorizontalOptions="FillAndExpand" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Spacing="5">
-                            <Label Text="Qty" />
-                            <Entry x:Name="QuantityEntry" Keyboard="Numeric" WidthRequest="70" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Spacing="5">
-                            <Label Text="Unit" />
-                            <Picker x:Name="UnitPicker" WidthRequest="100" />
-                        </VerticalStackLayout>
-                        <Button Text="Add" Clicked="OnAddIngredientClicked" VerticalOptions="End" />
+                    <HorizontalStackLayout Spacing="10">
+                        <Picker x:Name="IngredientPicker" Title="Ingredient" HorizontalOptions="FillAndExpand" />
+                        <Entry x:Name="QuantityEntry" Placeholder="Qty" Keyboard="Numeric" WidthRequest="70" />
+                        <Picker x:Name="UnitPicker" Title="Unit" WidthRequest="100" />
+                        <Button Text="Add" Clicked="OnAddIngredientClicked" />
                     </HorizontalStackLayout>
                 </VerticalStackLayout>
             </Frame>
 
-            <!-- Directions Frame -->
-            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="Directions" FontAttributes="Bold" FontSize="Medium" />
-                    <Editor x:Name="DirectionsEditor" HeightRequest="200" />
-                    <Button Text="Add Step" Clicked="OnAddStepClicked" HorizontalOptions="Start" />
-                </VerticalStackLayout>
-            </Frame>
+            <Button Text="Save Recipe" Clicked="OnSaveClicked" Style="{StaticResource EdgyButtonStyle}" HorizontalOptions="FillAndExpand" />
 
-            <!-- Action Buttons -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Button Grid.Column="0" Text="Save" Clicked="OnSaveClicked" />
-                <Button Grid.Column="1" Text="Cancel" Clicked="OnCancelClicked" />
-            </Grid>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
