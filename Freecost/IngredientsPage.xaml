@@ -4,7 +4,7 @@
              xmlns:local="clr-namespace:Freecost"
              x:Class="Freecost.IngredientsPage"
              Title="Ingredients">
-    <Grid RowDefinitions="Auto, Auto, *">
+    <Grid RowDefinitions="Auto, Auto, Auto, *">
         <Label Grid.Row="0" Text="Ingredients" Style="{StaticResource Headline}" Margin="0,20,0,10" />
 
         <HorizontalStackLayout Grid.Row="1" HorizontalOptions="Center" Spacing="10" Margin="0,0,0,20">
@@ -14,74 +14,68 @@
             <Button Text="Bulk Import" Clicked="OnBulkImportClicked" Style="{StaticResource EdgyButtonStyle}" />
         </HorizontalStackLayout>
 
-        <!-- A ScrollView to contain our programmatically generated Grid -->
-        <ScrollView Grid.Row="2">
+        <Grid Grid.Row="2" ColumnSpacing="15" Padding="10,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="2.5*" />
+                <ColumnDefinition Width="2.5*" />
+                <ColumnDefinition Width="1.5*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Column="0" Text="Name" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="ItemName" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="1" Text="Alias" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="AliasName" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="2" Text="Supplier" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SupplierName" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="3" Text="SKU" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SKU" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="4" Text="Price" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="End">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CasePrice" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="5" Text="Quantity" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="End">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CaseQuantity" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="6" Text="Unit" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Unit" />
+                </Label.GestureRecognizers>
+            </Label>
+            <BoxView Grid.ColumnSpan="7" HeightRequest="1" Color="{StaticResource BorderColor}" VerticalOptions="End"/>
+        </Grid>
+
+        <ScrollView Grid.Row="3">
             <Grid x:Name="IngredientsGrid"
                   ColumnSpacing="15"
                   Padding="10,0">
-
-                <!-- Define Columns ONCE. All rows will adhere to this. -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*" />
-                    <!-- Name -->
                     <ColumnDefinition Width="2.5*" />
-                    <!-- Alias -->
                     <ColumnDefinition Width="2.5*" />
-                    <!-- Supplier -->
                     <ColumnDefinition Width="1.5*" />
-                    <!-- SKU -->
                     <ColumnDefinition Width="Auto" />
-                    <!-- Price -->
                     <ColumnDefinition Width="Auto" />
-                    <!-- Quantity -->
                     <ColumnDefinition Width="Auto" />
-                    <!-- Unit -->
                 </Grid.ColumnDefinitions>
-
-                <!-- The Header Row is the only row we define in XAML -->
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Header Labels with TapGestureRecognizers for sorting -->
-                <Label Grid.Row="0" Grid.Column="0" Text="Name" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="ItemName" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="1" Text="Alias" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="AliasName" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="2" Text="Supplier" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SupplierName" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="3" Text="SKU" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SKU" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="4" Text="Price" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="End">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CasePrice" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="5" Text="Quantity" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="End">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CaseQuantity" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="6" Text="Unit" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Unit" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <BoxView Grid.Row="0" Grid.ColumnSpan="7" HeightRequest="1" Color="{StaticResource BorderColor}" VerticalOptions="End"/>
-
-                <!-- Data rows will be added here from code-behind -->
             </Grid>
         </ScrollView>
     </Grid>

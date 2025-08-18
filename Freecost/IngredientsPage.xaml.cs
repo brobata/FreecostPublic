@@ -74,15 +74,9 @@ namespace Freecost
 
         private void PopulateGrid()
         {
-            while (IngredientsGrid.RowDefinitions.Count > 1)
-            {
-                IngredientsGrid.RowDefinitions.RemoveAt(1);
-            }
-            var childrenToRemove = IngredientsGrid.Children.Where(c => Grid.GetRow((BindableObject)c) > 0).ToList();
-            foreach (var child in childrenToRemove)
-            {
-                IngredientsGrid.Remove(child);
-            }
+            // Clear ALL previous rows and children from the grid
+            IngredientsGrid.RowDefinitions.Clear();
+            IngredientsGrid.Children.Clear();
 
             for (int i = 0; i < _ingredients.Count; i++)
             {
@@ -100,22 +94,24 @@ namespace Freecost
                     BackgroundColor = ingredient.IsSelected ? (Color)Application.Current.Resources["Accent"] : (ingredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]),
                     GestureRecognizers = { tapGesture }
                 };
-                IngredientsGrid.Add(backgroundGrid, 0, i + 1);
+                // Add to row 'i' instead of 'i + 1'
+                IngredientsGrid.Add(backgroundGrid, 0, i);
                 Grid.SetColumnSpan(backgroundGrid, 7);
 
-                IngredientsGrid.Add(CreateDataLabel(ingredient.ItemName, TextAlignment.Start), 0, i + 1);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.AliasName, TextAlignment.Start), 1, i + 1);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.SupplierName, TextAlignment.Start), 2, i + 1);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.SKU, TextAlignment.Start), 3, i + 1);
-                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:C}", ingredient.CasePrice), TextAlignment.End), 4, i + 1);
-                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:F2}", ingredient.CaseQuantity), TextAlignment.End), 5, i + 1);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.Unit, TextAlignment.Start), 6, i + 1);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.ItemName, TextAlignment.Start), 0, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.AliasName, TextAlignment.Start), 1, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.SupplierName, TextAlignment.Start), 2, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.SKU, TextAlignment.Start), 3, i);
+                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:C}", ingredient.CasePrice), TextAlignment.End), 4, i);
+                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:F2}", ingredient.CaseQuantity), TextAlignment.End), 5, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.Unit, TextAlignment.Start), 6, i);
 
                 var bottomBorder = new BoxView { HeightRequest = 1, Color = (Color)Application.Current.Resources["BorderColor"], VerticalOptions = LayoutOptions.End };
-                IngredientsGrid.Add(bottomBorder, 0, i + 1);
+                IngredientsGrid.Add(bottomBorder, 0, i);
                 Grid.SetColumnSpan(bottomBorder, 7);
             }
         }
+
 
         private Label CreateDataLabel(string? text, TextAlignment alignment)
         {
@@ -125,18 +121,19 @@ namespace Freecost
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalOptions = LayoutOptions.Fill,
                 HorizontalTextAlignment = alignment,
-                Padding = new Thickness(5, 10)
+                Padding = new Thickness(5, 10),
+                InputTransparent = true // Make sure the label doesn't block the tap
             };
         }
 
         private void OnRowTapped(object? sender, TappedEventArgs e)
         {
-            if (e.Parameter is IngredientDisplayRecord tappedIngredient)
+            if (e.Parameter is IngredientDisplayRecord tappedIngredient && sender is Grid backgroundGrid)
             {
-                // Toggle the selection state
+                // Toggle the selection state of the data object
                 tappedIngredient.IsSelected = !tappedIngredient.IsSelected;
 
-                // Add or remove from the selection list
+                // Update the selection list
                 if (tappedIngredient.IsSelected)
                 {
                     if (!_selectedIngredients.Contains(tappedIngredient))
@@ -147,10 +144,13 @@ namespace Freecost
                     _selectedIngredients.Remove(tappedIngredient);
                 }
 
-                // Redraw the grid to show the updated selection state
-                PopulateGrid();
+                // Directly update the background color of the tapped grid
+                backgroundGrid.BackgroundColor = tappedIngredient.IsSelected
+                    ? (Color)Application.Current.Resources["Accent"]
+                    : (tappedIngredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]);
             }
         }
+
 
         private async void OnAddIngredientClicked(object sender, EventArgs e)
         {
@@ -190,10 +190,14 @@ namespace Freecost
                     }
                 }
                 await batch.CommitAsync();
+
+                // Remove the deleted items from the local list and refresh the UI
+                _ingredients.RemoveAll(ing => _selectedIngredients.Contains(ing));
                 _selectedIngredients.Clear();
-                LoadData();
+                PopulateGrid();
             }
         }
+
 
         private void SortIngredients()
         {

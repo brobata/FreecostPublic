@@ -7,30 +7,35 @@
 
     <Grid VerticalOptions="End" HorizontalOptions="Center">
 
-        <Frame BackgroundColor="#CC121212"
+        <Frame BackgroundColor="#CCFFFFFF"
                CornerRadius="0"
                Padding="30"
                Margin="20"
                HasShadow="True"
-               WidthRequest="350">
-            <VerticalStackLayout
-                Spacing="20">
+               WidthRequest="450">
+            <VerticalStackLayout Spacing="20">
 
-                <Label Text="Email Address" />
-                <Border>
-                    <Entry
-                    x:Name="EmailEntry"
-                    Placeholder="you@example.com"
-                    Keyboard="Email" />
-                </Border>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <VerticalStackLayout Grid.Column="0">
+                        <Label Text="Email Address" />
+                        <Border>
+                            <Entry
+                                x:Name="EmailEntry"
+                                Placeholder="you@example.com"
+                                Keyboard="Email" />
+                        </Border>
+                    </VerticalStackLayout>
 
-                <Label Text="Password" />
-                <Border>
-                    <Entry
-                    x:Name="PasswordEntry"
-                    Placeholder="Enter your password"
-                    IsPassword="True" />
-                </Border>
+                    <VerticalStackLayout Grid.Column="1">
+                        <Label Text="Password" />
+                        <Border>
+                            <Entry
+                                x:Name="PasswordEntry"
+                                Placeholder="Enter your password"
+                                IsPassword="True" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Grid>
 
                 <HorizontalStackLayout Spacing="10" Margin="0,10,0,10">
                     <CheckBox x:Name="RememberMeCheckBox" />
