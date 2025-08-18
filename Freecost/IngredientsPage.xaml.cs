@@ -36,36 +36,40 @@ namespace Freecost
             InitializeComponent();
             SessionService.OnRestaurantChanged += (s, e) => LoadData();
             CreateInitialMaps();
+
+            Loaded += IngredientsPage_Loaded;
+            Unloaded += IngredientsPage_Unloaded;
         }
+
+        private void IngredientsPage_Loaded(object? sender, EventArgs e)
+        {
+            // Subscribe to key events when the page is loaded
+#if WINDOWS
+            if (Microsoft.Maui.Controls.Application.Current?.Windows[0]?.Handler?.PlatformView is Microsoft.UI.Xaml.Window nativeWindow)
+            {
+                nativeWindow.CoreWindow.KeyDown += CoreWindow_KeyDown;
+                nativeWindow.CoreWindow.KeyUp += CoreWindow_KeyUp;
+            }
+#endif
+        }
+
+        private void IngredientsPage_Unloaded(object? sender, EventArgs e)
+        {
+            // Unsubscribe from key events when the page is unloaded
+#if WINDOWS
+            if (Microsoft.Maui.Controls.Application.Current?.Windows[0]?.Handler?.PlatformView is Microsoft.UI.Xaml.Window nativeWindow)
+            {
+                nativeWindow.CoreWindow.KeyDown -= CoreWindow_KeyDown;
+                nativeWindow.CoreWindow.KeyUp -= CoreWindow_KeyUp;
+            }
+#endif
+        }
+
 
         protected override void OnAppearing()
         {
             base.OnAppearing();
             LoadData();
-
-            // Subscribe to key events when the page appears
-#if WINDOWS
-            var window = (this.Handler?.PlatformView as FrameworkElement)?.XamlRoot?.Content as Microsoft.UI.Xaml.Window;
-            if (window != null)
-            {
-                window.CoreWindow.KeyDown += CoreWindow_KeyDown;
-                window.CoreWindow.KeyUp += CoreWindow_KeyUp;
-            }
-#endif
-        }
-
-        protected override void OnDisappearing()
-        {
-            base.OnDisappearing();
-            // Unsubscribe from key events when the page disappears to prevent memory leaks
-#if WINDOWS
-            var window = (this.Handler?.PlatformView as FrameworkElement)?.XamlRoot?.Content as Microsoft.UI.Xaml.Window;
-            if (window != null)
-            {
-                window.CoreWindow.KeyDown -= CoreWindow_KeyDown;
-                window.CoreWindow.KeyUp -= CoreWindow_KeyUp;
-            }
-#endif
         }
 
 #if WINDOWS
