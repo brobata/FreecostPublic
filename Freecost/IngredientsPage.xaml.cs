@@ -98,11 +98,13 @@ namespace Freecost
                 tapGesture.CommandParameter = ingredient;
 
                 Color backgroundColor;
+#if ANDROID || IOS || MACCATALYST || WINDOWS
                 if (Application.Current != null && Application.Current.Resources != null)
                 {
                     backgroundColor = ingredient.IsSelected ? (Color)Application.Current.Resources["Accent"] : (ingredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]);
                 }
                 else
+#endif
                 {
                     // Fallback color in case resources are not available
                     backgroundColor = ingredient.IsSelected ? Colors.Blue : (ingredient.IsEven ? Colors.White : Colors.LightGray);
@@ -125,12 +127,14 @@ namespace Freecost
                 IngredientsGrid.Add(CreateDataLabel(string.Format("{0:F2}", ingredient.CaseQuantity), TextAlignment.End), 5, i);
                 IngredientsGrid.Add(CreateDataLabel(ingredient.Unit, TextAlignment.Start), 6, i);
 
+#if ANDROID || IOS || MACCATALYST || WINDOWS
                 if (Application.Current != null && Application.Current.Resources != null)
                 {
                     var bottomBorder = new BoxView { HeightRequest = 1, Color = (Color)Application.Current.Resources["BorderColor"], VerticalOptions = LayoutOptions.End };
                     IngredientsGrid.Add(bottomBorder, 0, i);
                     Grid.SetColumnSpan(bottomBorder, 7);
                 }
+#endif
             }
         }
 

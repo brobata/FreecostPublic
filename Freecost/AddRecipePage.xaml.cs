@@ -45,19 +45,23 @@ namespace Freecost
                     Text = allergen.Name
                 };
 
+#if ANDROID || IOS || MACCATALYST || WINDOWS
                 if (Application.Current != null && Application.Current.Resources != null)
                 {
                     chip.Style = (Style)Application.Current.Resources["ChipStyle"];
                     chip.BackgroundColor = allergen.IsSelected ? (Color)Application.Current.Resources["Accent"] : (Color)Application.Current.Resources["Secondary"];
                 }
+#endif
 
                 chip.Clicked += (s, e) =>
                 {
                     allergen.IsSelected = !allergen.IsSelected;
+#if ANDROID || IOS || MACCATALYST || WINDOWS
                     if (Application.Current != null && Application.Current.Resources != null)
                     {
                         chip.BackgroundColor = allergen.IsSelected ? (Color)Application.Current.Resources["Accent"] : (Color)Application.Current.Resources["Secondary"];
                     }
+#endif
                 };
                 AllergensLayout.Children.Add(chip);
             }
@@ -141,6 +145,7 @@ namespace Freecost
 
         private void OnAddIngredientClicked(object sender, EventArgs e)
         {
+#if ANDROID || IOS || MACCATALYST || WINDOWS
             if (IngredientPicker.SelectedItem == null)
             {
                 if (Application.Current?.MainPage != null)
@@ -154,6 +159,7 @@ namespace Freecost
                     Application.Current.MainPage.DisplayAlert("Invalid Quantity", "Please enter a valid, positive number for the quantity.", "OK");
                 return;
             }
+#endif
 
             var selectedIngredientDisplay = IngredientPicker.SelectedItem as IngredientDisplay;
             if (selectedIngredientDisplay?.OriginalIngredient == null) return;
