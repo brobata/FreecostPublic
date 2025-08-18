@@ -9,6 +9,12 @@ using CsvHelper;
 using OfficeOpenXml;
 using System.Text.RegularExpressions;
 
+#if WINDOWS
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Input;
+using Windows.System;
+#endif
+
 namespace Freecost
 {
     public partial class IngredientsPage : ContentPage
@@ -30,16 +36,63 @@ namespace Freecost
             InitializeComponent();
             SessionService.OnRestaurantChanged += (s, e) => LoadData();
             CreateInitialMaps();
-
-            // You'll need to implement platform-specific logic to set IsShiftPressed and IsCtrlPressed
-            // For example, on Windows, you might use KeyboardAccelerators.
         }
 
         protected override void OnAppearing()
         {
             base.OnAppearing();
             LoadData();
+
+            // Subscribe to key events when the page appears
+#if WINDOWS
+            var window = (this.Handler?.PlatformView as FrameworkElement)?.XamlRoot?.Content as Microsoft.UI.Xaml.Window;
+            if (window != null)
+            {
+                window.CoreWindow.KeyDown += CoreWindow_KeyDown;
+                window.CoreWindow.KeyUp += CoreWindow_KeyUp;
+            }
+#endif
         }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            // Unsubscribe from key events when the page disappears to prevent memory leaks
+#if WINDOWS
+            var window = (this.Handler?.PlatformView as FrameworkElement)?.XamlRoot?.Content as Microsoft.UI.Xaml.Window;
+            if (window != null)
+            {
+                window.CoreWindow.KeyDown -= CoreWindow_KeyDown;
+                window.CoreWindow.KeyUp -= CoreWindow_KeyUp;
+            }
+#endif
+        }
+
+#if WINDOWS
+        private void CoreWindow_KeyDown(Windows.UI.Core.CoreWindow sender, Windows.UI.Core.KeyEventArgs args)
+        {
+            if (args.VirtualKey == VirtualKey.Shift)
+            {
+                IsShiftPressed = true;
+            }
+            if (args.VirtualKey == VirtualKey.Control)
+            {
+                IsCtrlPressed = true;
+            }
+        }
+
+        private void CoreWindow_KeyUp(Windows.UI.Core.CoreWindow sender, Windows.UI.Core.KeyEventArgs args)
+        {
+            if (args.VirtualKey == VirtualKey.Shift)
+            {
+                IsShiftPressed = false;
+            }
+            if (args.VirtualKey == VirtualKey.Control)
+            {
+                IsCtrlPressed = false;
+            }
+        }
+#endif
 
         private void LoadData()
         {
@@ -91,7 +144,7 @@ namespace Freecost
                 var ingredient = _ingredients[i];
                 ingredient.IsEven = i % 2 == 0;
 
-                IngredientsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                IngredientsGrid.RowDefinitions.Add(new RowDefinition { Height = Microsoft.Maui.GridLength.Auto });
 
                 var tapGesture = new TapGestureRecognizer();
                 tapGesture.Tapped += OnRowTapped;
@@ -99,9 +152,9 @@ namespace Freecost
 
                 Color backgroundColor;
 #if ANDROID || IOS || MACCATALYST || WINDOWS
-                if (Application.Current != null && Application.Current.Resources != null)
+                if (Microsoft.Maui.Controls.Application.Current != null && Microsoft.Maui.Controls.Application.Current.Resources != null)
                 {
-                    backgroundColor = ingredient.IsSelected ? (Color)Application.Current.Resources["Accent"] : (ingredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]);
+                    backgroundColor = ingredient.IsSelected ? (Color)Microsoft.Maui.Controls.Application.Current.Resources["Accent"] : (ingredient.IsEven ? (Color)Microsoft.Maui.Controls.Application.Current.Resources["RowColorEven"] : (Color)Microsoft.Maui.Controls.Application.Current.Resources["RowColorOdd"]);
                 }
                 else
 #endif
@@ -119,18 +172,18 @@ namespace Freecost
                 IngredientsGrid.Add(backgroundGrid, 0, i);
                 Grid.SetColumnSpan(backgroundGrid, 7);
 
-                IngredientsGrid.Add(CreateDataLabel(ingredient.ItemName, TextAlignment.Start), 0, i);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.AliasName, TextAlignment.Start), 1, i);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.SupplierName, TextAlignment.Start), 2, i);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.SKU, TextAlignment.Start), 3, i);
-                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:C}", ingredient.CasePrice), TextAlignment.End), 4, i);
-                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:F2}", ingredient.CaseQuantity), TextAlignment.End), 5, i);
-                IngredientsGrid.Add(CreateDataLabel(ingredient.Unit, TextAlignment.Start), 6, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.ItemName, Microsoft.Maui.TextAlignment.Start), 0, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.AliasName, Microsoft.Maui.TextAlignment.Start), 1, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.SupplierName, Microsoft.Maui.TextAlignment.Start), 2, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.SKU, Microsoft.Maui.TextAlignment.Start), 3, i);
+                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:C}", ingredient.CasePrice), Microsoft.Maui.TextAlignment.End), 4, i);
+                IngredientsGrid.Add(CreateDataLabel(string.Format("{0:F2}", ingredient.CaseQuantity), Microsoft.Maui.TextAlignment.End), 5, i);
+                IngredientsGrid.Add(CreateDataLabel(ingredient.Unit, Microsoft.Maui.TextAlignment.Start), 6, i);
 
 #if ANDROID || IOS || MACCATALYST || WINDOWS
-                if (Application.Current != null && Application.Current.Resources != null)
+                if (Microsoft.Maui.Controls.Application.Current != null && Microsoft.Maui.Controls.Application.Current.Resources != null)
                 {
-                    var bottomBorder = new BoxView { HeightRequest = 1, Color = (Color)Application.Current.Resources["BorderColor"], VerticalOptions = LayoutOptions.End };
+                    var bottomBorder = new BoxView { HeightRequest = 1, Color = (Color)Microsoft.Maui.Controls.Application.Current.Resources["BorderColor"], VerticalOptions = LayoutOptions.End };
                     IngredientsGrid.Add(bottomBorder, 0, i);
                     Grid.SetColumnSpan(bottomBorder, 7);
                 }
@@ -139,7 +192,7 @@ namespace Freecost
         }
 
 
-        private Label CreateDataLabel(string? text, TextAlignment alignment)
+        private Label CreateDataLabel(string? text, Microsoft.Maui.TextAlignment alignment)
         {
             return new Label
             {
@@ -147,12 +200,12 @@ namespace Freecost
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalOptions = LayoutOptions.Fill,
                 HorizontalTextAlignment = alignment,
-                Padding = new Thickness(5, 10),
+                Padding = new Microsoft.Maui.Thickness(5, 10),
                 InputTransparent = true // Make sure the label doesn't block the tap
             };
         }
 
-        private void OnRowTapped(object? sender, TappedEventArgs e)
+        private void OnRowTapped(object? sender, Microsoft.Maui.Controls.TappedEventArgs e)
         {
             if (e.Parameter is not IngredientDisplayRecord tappedIngredient) return;
 
@@ -270,7 +323,7 @@ namespace Freecost
             _ingredients = sorted;
         }
 
-        private void OnSortClicked(object? sender, TappedEventArgs e)
+        private void OnSortClicked(object? sender, Microsoft.Maui.Controls.TappedEventArgs e)
         {
             if (e.Parameter is string newSortColumn)
             {
