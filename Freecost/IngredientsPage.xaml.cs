@@ -17,14 +17,22 @@ namespace Freecost
         private string? restaurantId;
         private List<IngredientDisplayRecord> _ingredients = new List<IngredientDisplayRecord>();
         private List<IngredientDisplayRecord> _selectedIngredients = new List<IngredientDisplayRecord>();
+        private IngredientDisplayRecord? _lastSelectedItem;
         private string _currentSortColumn = "ItemName";
         private bool _isSortAscending = true;
+
+        // Platform-specific properties to track key presses
+        public bool IsShiftPressed { get; set; }
+        public bool IsCtrlPressed { get; set; }
 
         public IngredientsPage()
         {
             InitializeComponent();
             SessionService.OnRestaurantChanged += (s, e) => LoadData();
             CreateInitialMaps();
+
+            // You'll need to implement platform-specific logic to set IsShiftPressed and IsCtrlPressed
+            // For example, on Windows, you might use KeyboardAccelerators.
         }
 
         protected override void OnAppearing()
@@ -89,12 +97,23 @@ namespace Freecost
                 tapGesture.Tapped += OnRowTapped;
                 tapGesture.CommandParameter = ingredient;
 
+                Color backgroundColor;
+                if (Application.Current != null && Application.Current.Resources != null)
+                {
+                    backgroundColor = ingredient.IsSelected ? (Color)Application.Current.Resources["Accent"] : (ingredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]);
+                }
+                else
+                {
+                    // Fallback color in case resources are not available
+                    backgroundColor = ingredient.IsSelected ? Colors.Blue : (ingredient.IsEven ? Colors.White : Colors.LightGray);
+                }
+
                 var backgroundGrid = new Grid
                 {
-                    BackgroundColor = ingredient.IsSelected ? (Color)Application.Current.Resources["Accent"] : (ingredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]),
+                    BackgroundColor = backgroundColor,
                     GestureRecognizers = { tapGesture }
                 };
-                // Add to row 'i' instead of 'i + 1'
+
                 IngredientsGrid.Add(backgroundGrid, 0, i);
                 Grid.SetColumnSpan(backgroundGrid, 7);
 
@@ -106,9 +125,12 @@ namespace Freecost
                 IngredientsGrid.Add(CreateDataLabel(string.Format("{0:F2}", ingredient.CaseQuantity), TextAlignment.End), 5, i);
                 IngredientsGrid.Add(CreateDataLabel(ingredient.Unit, TextAlignment.Start), 6, i);
 
-                var bottomBorder = new BoxView { HeightRequest = 1, Color = (Color)Application.Current.Resources["BorderColor"], VerticalOptions = LayoutOptions.End };
-                IngredientsGrid.Add(bottomBorder, 0, i);
-                Grid.SetColumnSpan(bottomBorder, 7);
+                if (Application.Current != null && Application.Current.Resources != null)
+                {
+                    var bottomBorder = new BoxView { HeightRequest = 1, Color = (Color)Application.Current.Resources["BorderColor"], VerticalOptions = LayoutOptions.End };
+                    IngredientsGrid.Add(bottomBorder, 0, i);
+                    Grid.SetColumnSpan(bottomBorder, 7);
+                }
             }
         }
 
@@ -128,27 +150,61 @@ namespace Freecost
 
         private void OnRowTapped(object? sender, TappedEventArgs e)
         {
-            if (e.Parameter is IngredientDisplayRecord tappedIngredient && sender is Grid backgroundGrid)
-            {
-                // Toggle the selection state of the data object
-                tappedIngredient.IsSelected = !tappedIngredient.IsSelected;
+            if (e.Parameter is not IngredientDisplayRecord tappedIngredient) return;
 
-                // Update the selection list
+            if (IsCtrlPressed)
+            {
+                // Ctrl-click toggles selection of the clicked item
+                tappedIngredient.IsSelected = !tappedIngredient.IsSelected;
                 if (tappedIngredient.IsSelected)
                 {
-                    if (!_selectedIngredients.Contains(tappedIngredient))
-                        _selectedIngredients.Add(tappedIngredient);
+                    _selectedIngredients.Add(tappedIngredient);
                 }
                 else
                 {
                     _selectedIngredients.Remove(tappedIngredient);
                 }
-
-                // Directly update the background color of the tapped grid
-                backgroundGrid.BackgroundColor = tappedIngredient.IsSelected
-                    ? (Color)Application.Current.Resources["Accent"]
-                    : (tappedIngredient.IsEven ? (Color)Application.Current.Resources["RowColorEven"] : (Color)Application.Current.Resources["RowColorOdd"]);
+                _lastSelectedItem = tappedIngredient;
             }
+            else if (IsShiftPressed && _lastSelectedItem != null)
+            {
+                // Shift-click selects a range of items
+                var lastIndex = _ingredients.IndexOf(_lastSelectedItem);
+                var currentIndex = _ingredients.IndexOf(tappedIngredient);
+
+                var startIndex = Math.Min(lastIndex, currentIndex);
+                var endIndex = Math.Max(lastIndex, currentIndex);
+
+                // Deselect all items first
+                foreach (var item in _selectedIngredients)
+                {
+                    item.IsSelected = false;
+                }
+                _selectedIngredients.Clear();
+
+                // Select the new range
+                for (int i = startIndex; i <= endIndex; i++)
+                {
+                    _ingredients[i].IsSelected = true;
+                    _selectedIngredients.Add(_ingredients[i]);
+                }
+            }
+            else
+            {
+                // Simple click deselects all other items and selects the current one
+                foreach (var item in _selectedIngredients)
+                {
+                    item.IsSelected = false;
+                }
+                _selectedIngredients.Clear();
+
+                tappedIngredient.IsSelected = true;
+                _selectedIngredients.Add(tappedIngredient);
+                _lastSelectedItem = tappedIngredient;
+            }
+
+            // Refresh the grid to show the new selection states
+            PopulateGrid();
         }
 
 
@@ -480,14 +536,14 @@ namespace Freecost
                             var quantityMatch = Regex.Match(parts[0], @"[\d\.]+");
                             if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
                                 record.CaseQuantity = quantity;
-                            record.Unit = Regex.Replace(parts[1], @"[\d\.]+", "").Trim();
+                            record.Unit = Regex.Replace(parts[1], @"[\d\.]+", "").Trim() ?? string.Empty;
                         }
                         else
                         {
                             var quantityMatch = Regex.Match(combined, @"[\d\.]+");
                             if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
                                 record.CaseQuantity = quantity;
-                            record.Unit = Regex.Replace(combined, @"[\d\.]+", "").Trim();
+                            record.Unit = Regex.Replace(combined, @"[\d\.]+", "").Trim() ?? string.Empty;
                         }
                     }
                 }
@@ -502,7 +558,7 @@ namespace Freecost
                             if (sizeMatch.Success && double.TryParse(sizeMatch.Value, out double sizeQuantity))
                             {
                                 record.CaseQuantity = pack * sizeQuantity;
-                                record.Unit = Regex.Replace(size, @"[\d\.]+", "").Trim();
+                                record.Unit = Regex.Replace(size, @"[\d\.]+", "").Trim() ?? string.Empty;
                             }
                         }
                     }
