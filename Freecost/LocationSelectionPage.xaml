@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="clr-namespace:CommunityToolkit.Maui.Behaviors;assembly=CommunityToolkit.Maui"
+             x:Class="Freecost.LocationSelectionPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource PageBackgroundColor}">
+    <Grid
+        VerticalOptions="Center"
+        HorizontalOptions="Center">
+
+        <Frame
+            Style="{StaticResource Frame}"
+            Padding="30"
+            Margin="20"
+            WidthRequest="400"
+            HasShadow="True">
+
+            <VerticalStackLayout
+                Spacing="20">
+
+                <Label
+                    Text="Select a Location"
+                    Style="{StaticResource Headline}"
+                    Margin="0,0,0,30" />
+
+                <Label Text="Available Locations" />
+
+                <Border Style="{StaticResource Border}">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <Picker
+            Grid.Column="0"
+            x:Name="LocationPicker"
+            Title="Choose a location"
+            VerticalOptions="Center"
+            BackgroundColor="Transparent"/>
+                        <Label
+            Grid.Column="1"
+            Text="▼"
+            FontSize="12"
+            TextColor="{StaticResource SecondaryTextColor}"
+            VerticalOptions="Center"
+            HorizontalOptions="Center"
+            Margin="0,0,10,0"
+            InputTransparent="True"/>
+                    </Grid>
+                </Border>
+
+                <Button
+                    x:Name="ConfirmButton"
+                    Text="Confirm Selection"
+                    Clicked="OnConfirmClicked"
+                    HorizontalOptions="Fill"
+                    Margin="0,20,0,0"/>
+
+            </VerticalStackLayout>
+        </Frame>
+    </Grid>
+</ContentPage>

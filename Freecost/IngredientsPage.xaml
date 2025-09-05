@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Freecost"
+             x:Class="Freecost.IngredientsPage"
+             Title="Ingredients">
+    <Grid RowDefinitions="Auto, Auto, Auto, *">
+        <Label Grid.Row="0" Text="Ingredients" Style="{StaticResource Headline}" Margin="0,20,0,10" />
+
+        <HorizontalStackLayout Grid.Row="1" HorizontalOptions="Center" Spacing="10" Margin="0,0,0,20">
+            <Button Text="Add" Clicked="OnAddIngredientClicked" Style="{StaticResource EdgyButtonStyle}" />
+            <Button Text="Edit" Clicked="OnEditIngredientClicked" Style="{StaticResource EdgyButtonStyle}" />
+            <Button Text="Delete" Clicked="OnDeleteIngredientClicked" Style="{StaticResource EdgyButtonStyle}" />
+            <Button Text="Bulk Import" Clicked="OnBulkImportClicked" Style="{StaticResource EdgyButtonStyle}" />
+        </HorizontalStackLayout>
+
+        <!-- Header Grid -->
+        <Grid Grid.Row="2" ColumnSpacing="15" Padding="10,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="2.5*" />
+                <ColumnDefinition Width="2.5*" />
+                <ColumnDefinition Width="1.5*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="75" />
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Column="0" Text="Name" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="ItemName" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="1" Text="Alias" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="AliasName" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="2" Text="Supplier" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SupplierName" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="3" Text="SKU" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="SKU" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="4" Text="Price" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CasePrice" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="5" Text="Quantity" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="CaseQuantity" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="6" Text="Unit" Style="{StaticResource ListHeaderLabel}" HorizontalTextAlignment="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Unit" />
+                </Label.GestureRecognizers>
+            </Label>
+            <BoxView Grid.ColumnSpan="7" HeightRequest="1" Color="{StaticResource BorderColor}" VerticalOptions="End"/>
+        </Grid>
+
+        <!-- Data Grid -->
+        <ScrollView Grid.Row="3">
+            <Grid x:Name="IngredientsGrid"
+                  ColumnSpacing="15"
+                  Padding="10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="2.5*" />
+                    <ColumnDefinition Width="2.5*" />
+                    <ColumnDefinition Width="1.5*" />
+                    <ColumnDefinition Width="100" />
+                    <ColumnDefinition Width="100" />
+                    <ColumnDefinition Width="75" />
+                </Grid.ColumnDefinitions>
+            </Grid>
+        </ScrollView>
+    </Grid>
+</ContentPage>
+

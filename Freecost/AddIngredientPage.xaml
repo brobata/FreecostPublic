@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="clr-namespace:CommunityToolkit.Maui.Behaviors;assembly=CommunityToolkit.Maui"
+             x:Class="Freecost.AddIngredientPage"
+             Title="Add Ingredient">
+    <ScrollView>
+        <VerticalStackLayout Spacing="10" Padding="20">
+            <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Ingredient Details" FontAttributes="Bold" FontSize="Medium" />
+
+                    <Border Style="{StaticResource Border}">
+                        <VerticalStackLayout Padding="5">
+                            <Label Text="Supplier Name" />
+                            <Entry x:Name="SupplierNameEntry" Placeholder="ex: Sysco" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource Border}">
+                        <VerticalStackLayout Padding="5">
+                            <Label Text="Item Name" />
+                            <Entry x:Name="ItemNameEntry" Placeholder="ex: Chicken Breast" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource Border}">
+                        <VerticalStackLayout Padding="5">
+                            <Label Text="Alias Name" />
+                            <Entry x:Name="AliasNameEntry" Placeholder="ex: Chicken" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource Border}">
+                        <VerticalStackLayout Padding="5">
+                            <Label Text="SKU" />
+                            <Entry x:Name="SKUEntry" Placeholder="ex: 12345" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource Border}">
+                        <VerticalStackLayout Padding="5">
+                            <Label Text="Case Price" />
+                            <Entry x:Name="CasePriceEntry" Keyboard="Numeric" Placeholder="ex: 50.00" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource Border}">
+                        <VerticalStackLayout Padding="5">
+                            <Label Text="Case Quantity" />
+                            <Entry x:Name="CaseQuantityEntry" Keyboard="Numeric" Placeholder="ex: 10" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Label Text="Unit" />
+                    <Border Style="{StaticResource Border}">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Picker Grid.Column="0" x:Name="UnitPicker" 
+                                 Title="Choose one"
+                                 VerticalOptions="Center" BackgroundColor="Transparent"/>
+                            <Label
+                                Grid.Column="1"
+                                Text="▼"
+                                FontSize="12"
+                                TextColor="{StaticResource SecondaryTextColor}"
+                                VerticalOptions="Center"
+                                 HorizontalOptions="Center"
+                                Margin="0,0,10,0"
+                                InputTransparent="True"/>
+                        </Grid>
+                    </Border>
+                </VerticalStackLayout>
+            </Frame>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Save" Clicked="OnSaveClicked" />
+                <Button Grid.Column="1" Text="Cancel" Clicked="OnCancelClicked" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

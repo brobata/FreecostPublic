@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Freecost"
+             x:Class="Freecost.EntreesPage"
+             Title="Entrees">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <OnPlatform x:TypeArguments="ColumnDefinitionCollection">
+                <On Platform="Android">
+                    <ColumnDefinition Width="*" />
+                </On>
+                <On Platform="WinUI, MacCatalyst, iOS">
+                    <ColumnDefinitionCollection>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="3*" />
+                    </ColumnDefinitionCollection>
+                </On>
+            </OnPlatform>
+        </Grid.ColumnDefinitions>
+
+        <VerticalStackLayout x:Name="ListPanel" Grid.Column="0" Spacing="10" Padding="10">
+            <Label Text="Entrees" Style="{StaticResource Headline}" Margin="0,10,0,5" />
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="10" Margin="0,0,0,10">
+                <Button Text="Add" Clicked="OnAddEntreeClicked" Style="{StaticResource EdgyButtonStyle}" />
+                <Button Text="Edit" Clicked="OnEditEntreeClicked" Style="{StaticResource EdgyButtonStyle}" />
+                <Button Text="Delete" Clicked="OnDeleteEntreeClicked" Style="{StaticResource EdgyButtonStyle}" />
+            </HorizontalStackLayout>
+
+            <Grid ColumnSpacing="10" Padding="12,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" Text="Name" FontAttributes="Bold">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Name" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Column="1" Text="Yield" FontAttributes="Bold">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Yield" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Column="2" Text="Unit" FontAttributes="Bold">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="YieldUnit" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Column="3" Text="Plate Cost" FontAttributes="Bold">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="FoodCost" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Column="4" Text="Menu Price" FontAttributes="Bold">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="PlatePrice" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Column="5" Text="Cost %" FontAttributes="Bold">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSortClicked" CommandParameter="Price" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
+            <BoxView HeightRequest="1" Color="{StaticResource BorderColor}" />
+
+            <ListView x:Name="EntreesListView"
+                      ItemSelected="OnEntreeSelected"
+                      HasUnevenRows="True">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="local:EntreeDisplayRecord">
+                        <ViewCell>
+                            <OnPlatform x:TypeArguments="View">
+                                <On Platform="Android">
+                                    <Frame Padding="10" Margin="5" BorderColor="{StaticResource BorderColor}" CornerRadius="5">
+                                        <VerticalStackLayout>
+                                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="Medium"/>
+                                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="*,*,*,*,*" ColumnSpacing="10" Margin="0,5,0,0">
+                                                <Label Grid.Row="0" Grid.Column="0" Text="Yield:" FontAttributes="Bold"/>
+                                                <Label Grid.Row="0" Grid.Column="1">
+                                                    <Label.FormattedText>
+                                                        <FormattedString>
+                                                            <Span Text="{Binding Yield, StringFormat='{0:F2}'}" />
+                                                            <Span Text=" " />
+                                                            <Span Text="{Binding YieldUnit}" />
+                                                        </FormattedString>
+                                                    </Label.FormattedText>
+                                                </Label>
+                                                <Label Grid.Row="1" Grid.Column="0" Text="Plate Cost:" FontAttributes="Bold"/>
+                                                <Label Grid.Row="1" Grid.Column="1" Text="{Binding FoodCost, StringFormat='{0:C}'}"/>
+                                                <Label Grid.Row="2" Grid.Column="0" Text="Menu Price:" FontAttributes="Bold"/>
+                                                <Label Grid.Row="2" Grid.Column="1" Text="{Binding PlatePrice, StringFormat='{0:C}'}"/>
+                                                <Label Grid.Row="3" Grid.Column="0" Text="Cost %:" FontAttributes="Bold"/>
+                                                <Label Grid.Row="3" Grid.Column="1" Text="{Binding Price, StringFormat='{0:P2}'}"/>
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Frame>
+                                </On>
+                                <On Platform="WinUI, MacCatalyst, iOS">
+                                    <Grid ColumnSpacing="10" Padding="12,5">
+                                        <VisualStateManager.VisualStateGroups>
+                                            <VisualStateGroup Name="CommonStates">
+                                                <VisualState Name="Normal" />
+                                                <VisualState Name="Selected">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateManager.VisualStateGroups>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="3*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Label Grid.Column="0" Text="{Binding Name}" VerticalOptions="Center" />
+                                        <Label Grid.Column="1" Text="{Binding Yield, StringFormat='{0:F2}'}" VerticalOptions="Center" />
+                                        <Label Grid.Column="2" Text="{Binding YieldUnit}" VerticalOptions="Center" />
+                                        <Label Grid.Column="3" Text="{Binding FoodCost, StringFormat='{0:C}'}" VerticalOptions="Center" />
+                                        <Label Grid.Column="4" Text="{Binding PlatePrice, StringFormat='{0:C}'}" VerticalOptions="Center" />
+                                        <Label Grid.Column="5" Text="{Binding Price, StringFormat='{0:P2}'}" VerticalOptions="Center" />
+                                    </Grid>
+                                </On>
+                            </OnPlatform>
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </VerticalStackLayout>
+
+        <ScrollView x:Name="DetailPanel" Grid.Column="1" Padding="20">
+            <VerticalStackLayout>
+                <Button Text="&lt; Back to List" Clicked="OnBackClicked" HorizontalOptions="Start">
+                    <Button.IsVisible>
+                        <OnPlatform x:TypeArguments="x:Boolean">
+                            <On Platform="Android" Value="True"/>
+                            <On Platform="WinUI, MacCatalyst, iOS" Value="False"/>
+                        </OnPlatform>
+                    </Button.IsVisible>
+                </Button>
+                <Label x:Name="SelectEntreeLabel" Text="Select an entree to see details" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="True" Style="{StaticResource SubHeadline}" Margin="0,50,0,0"/>
+
+                <VerticalStackLayout x:Name="EntreeDetailsView" IsVisible="False" Spacing="10">
+                    <Label x:Name="EntreeNameLabel" Style="{StaticResource Headline}" HorizontalOptions="Center" Margin="0,0,0,10"/>
+                    <Border Stroke="{StaticResource BorderColor}" StrokeThickness="2" Padding="2">
+                        <Image x:Name="EntreeImage" HeightRequest="300" Aspect="AspectFit" />
+                    </Border>
+                    <Border Stroke="{StaticResource BorderColor}" StrokeThickness="1" Padding="10">
+                        <HorizontalStackLayout>
+                            <Label Text="Allergens:" FontAttributes="Bold" VerticalOptions="Center"/>
+                            <Label x:Name="AllergensLabel" VerticalOptions="Center"/>
+                        </HorizontalStackLayout>
+                    </Border>
+                    <Border Stroke="{StaticResource BorderColor}" StrokeThickness="1" Padding="5">
+                        <VerticalStackLayout>
+                            <Grid Padding="5" BackgroundColor="{StaticResource Gray200}">
+                                <Label Text="Ingredients" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto, *">
+                                <Label Grid.Column="0" Text="AMOUNT" FontAttributes="Bold" Padding="5"/>
+                                <Label Grid.Column="1" Text="COMPONENT" FontAttributes="Bold" Padding="5"/>
+                            </Grid>
+                            <BoxView HeightRequest="1" Color="{StaticResource BorderColor}" />
+                            <ListView x:Name="ComponentsListView" HasUnevenRows="True" HeightRequest="200">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="local:EntreeComponent">
+                                        <ViewCell>
+                                            <Grid ColumnDefinitions="120, *">
+                                                <Label Grid.Column="0" Padding="5" VerticalOptions="Center">
+                                                    <Label.FormattedText>
+                                                        <FormattedString>
+                                                            <Span Text="{Binding Quantity, StringFormat='{0:G29}'}"/>
+                                                            <Span Text=" "/>
+                                                            <Span Text="{Binding Unit}"/>
+                                                        </FormattedString>
+                                                    </Label.FormattedText>
+                                                </Label>
+                                                <Label Grid.Column="1" Text="{Binding Name}" Padding="5" VerticalOptions="Center"/>
+                                            </Grid>
+                                        </ViewCell>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Stroke="{StaticResource BorderColor}" StrokeThickness="1" Padding="5">
+                        <VerticalStackLayout>
+                            <Grid Padding="5" BackgroundColor="{StaticResource Gray200}">
+                                <Label Text="Procedure" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center"/>
+                            </Grid>
+                            <Label x:Name="DirectionsLabel" Padding="10" LineBreakMode="WordWrap"/>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

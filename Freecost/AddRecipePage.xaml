@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.AddRecipePage"
+             Title="Add/Edit Recipe">
+    <Grid RowDefinitions="*, Auto" RowSpacing="10" Padding="20">
+
+        <ScrollView Grid.Row="0">
+            <Grid ColumnDefinitions="*, 1.5*" ColumnSpacing="20">
+
+                <VerticalStackLayout Grid.Column="0" Spacing="15">
+
+                    <Frame>
+                        <VerticalStackLayout Spacing="10" Padding="10">
+                            <Label Text="Recipe Details" Style="{StaticResource SubHeadline}" HorizontalOptions="Start"/>
+
+                            <Border Style="{StaticResource Border}">
+                                <VerticalStackLayout Padding="5">
+                                    <Label Text="Recipe Name" />
+
+                                    <Entry x:Name="RecipeNameEntry" Placeholder="e.g., House Vinaigrette" />
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Grid ColumnDefinitions="*,*">
+                                <Border Grid.Column="0" Style="{StaticResource Border}">
+                                    <VerticalStackLayout Padding="5">
+
+                                        <Label Text="Yield Quantity" />
+                                        <Entry x:Name="YieldEntry" Placeholder="e.g., 1" Keyboard="Numeric" />
+
+                                    </VerticalStackLayout>
+                                </Border>
+                                <Border Grid.Column="1" Style="{StaticResource Border}">
+
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Picker Grid.Column="0" x:Name="YieldUnitPicker" Title="Yield Unit of Measure" VerticalOptions="Center" BackgroundColor="Transparent"/>
+                                        <Label Grid.Column="1" Text="▼" FontSize="12" TextColor="{StaticResource SecondaryTextColor}" 
+ VerticalOptions="Center" HorizontalOptions="Center" Margin="0,0,10,0" InputTransparent="True"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame>
+                        <VerticalStackLayout Spacing="10" Padding="10">
+
+                            <Label Text="Allergens / Dietary Concerns" Style="{StaticResource SubHeadline}" HorizontalOptions="Start"/>
+                            <FlexLayout x:Name="AllergensLayout" Wrap="Wrap" AlignItems="Start" JustifyContent="Start" />
+                        </VerticalStackLayout>
+
+                    </Frame>
+                    <Frame>
+                        <VerticalStackLayout Spacing="10" Padding="10">
+                            <Grid ColumnDefinitions="*, Auto">
+
+                                <Label Grid.Column="0" Text="Image" Style="{StaticResource SubHeadline}" HorizontalOptions="Start" VerticalOptions="Center"/>
+                                <Button Grid.Column="1" Text="Upload Image" Clicked="OnUploadImageClicked" HorizontalOptions="End" VerticalOptions="Center"/>
+                            </Grid>
+
+                            <Border Stroke="{StaticResource BorderColor}" StrokeThickness="1" Padding="2" HeightRequest="200" HorizontalOptions="Center">
+                                <Image x:Name="PreviewImage" Aspect="AspectFit" />
+                            </Border>
+
+                        </VerticalStackLayout>
+                    </Frame>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Column="1" Spacing="15">
+                    <Frame>
+
+                        <VerticalStackLayout Spacing="10" Padding="10">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <Label Grid.Column="0" Text="Ingredients" Style="{StaticResource SubHeadline}" HorizontalOptions="Start" VerticalOptions="Center"/>
+
+                                <HorizontalStackLayout Grid.Column="1" Spacing="5" HorizontalOptions="End">
+                                    <Button Text="Edit Selected" Clicked="OnEditIngredientClicked" Style="{StaticResource EdgyButtonStyle}"/>
+                                    <Button Text="Delete Selected" Clicked="OnDeleteIngredientClicked" Style="{StaticResource DeleteButtonStyle}"/>
+
+                                </HorizontalStackLayout>
+                            </Grid>
+                            <CollectionView x:Name="IngredientsCollection" SelectionMode="None" HeightRequest="200">
+
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Padding="10" ColumnDefinitions="Auto,Auto,*">
+
+                                            <Grid.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnIngredientTapped" CommandParameter="{Binding .}" />
+
+                                            </Grid.GestureRecognizers>
+                                            <VisualStateManager.VisualStateGroups>
+
+                                                <VisualStateGroup Name="CommonStates">
+                                                    <VisualState Name="Normal" />
+
+                                                    <VisualState Name="Selected">
+                                                        <VisualState.Setters>
+
+                                                            <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
+                                            <Label Grid.Column="0" Text="{Binding Quantity}" Margin="0,0,5,0"/>
+                                            <Label Grid.Column="1" Text="{Binding Unit}" Margin="0,0,10,0"/>
+                                            <Label Grid.Column="2" Text="{Binding Name}" />
+
+                                        </Grid>
+                                    </DataTemplate>
+
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+
+                            <Grid ColumnSpacing="10" RowSpacing="5">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="130" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Label Grid.Row="0" Grid.Column="0" Text="Quantity"/>
+                                <Label Grid.Row="0" Grid.Column="1" Text="Unit"/>
+                                <Label Grid.Row="0" Grid.Column="2" Text="Ingredient"/>
+
+                                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource Border}">
+                                    <Entry x:Name="QuantityEntry" Keyboard="Numeric" Placeholder="Qty" HorizontalTextAlignment="Start" VerticalTextAlignment="Center" />
+                                </Border>
+                                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource Border}">
+                                    <Picker x:Name="UnitPicker" Title="Unit"/>
+                                </Border>
+                                <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource Border}">
+                                    <Picker x:Name="IngredientPicker" Title="Select Ingredient" />
+                                </Border>
+                                <Button Grid.Row="1" Grid.Column="3" Text="Add" Clicked="OnAddIngredientClicked" VerticalOptions="End" Style="{StaticResource EdgyButtonStyle}"/>
+                            </Grid>
+
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame VerticalOptions="Fill">
+                        <VerticalStackLayout Spacing="10" Padding="10">
+
+                            <Label Text="Directions" Style="{StaticResource SubHeadline}" HorizontalOptions="Start"/>
+                            <Editor x:Name="DirectionsEditor" HeightRequest="150" />
+                            <Button Text="Add Step" Clicked="OnAddStepClicked" HorizontalOptions="Start" Style="{StaticResource EdgyButtonStyle}"/>
+
+                        </VerticalStackLayout>
+                    </Frame>
+                </VerticalStackLayout>
+            </Grid>
+        </ScrollView>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Button Grid.Column="0" Text="Save Recipe" Clicked="OnSaveClicked" Style="{StaticResource EdgyButtonStyle}" HorizontalOptions="Fill" />
+
+            <Button Grid.Column="1" Text="Cancel" Clicked="OnCancelClicked" Style="{StaticResource EdgyButtonStyle}" HorizontalOptions="Fill" />
+        </Grid>
+    </Grid>
+</ContentPage>
