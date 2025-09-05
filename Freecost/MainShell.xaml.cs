@@ -10,6 +10,7 @@ public partial class MainShell : Shell
 
     private readonly MenuItem _loginMenuItem;
     private readonly MenuItem _logoutMenuItem;
+    private bool _isFirstAppearance = true;
 
     public MainShell()
     {
@@ -27,6 +28,16 @@ public partial class MainShell : Shell
         Routing.RegisterRoute(nameof(LocationSelectionPage), typeof(LocationSelectionPage));
 
         UpdateMenuItems();
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        if (_isFirstAppearance)
+        {
+            _isFirstAppearance = false;
+            await UsagePopupService.CheckAndShowPopupAsync();
+        }
     }
 
     private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)

@@ -10,12 +10,12 @@ public partial class App : Application
         MainPage = new ContentPage();
     }
 
-    protected override void OnStart()
+    protected override async void OnStart()
     {
         base.OnStart();
 
         // Run startup logic on the main thread
-        MainThread.BeginInvokeOnMainThread(async () =>
+        await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             await FirestoreService.InitializeAsync();
 
@@ -33,6 +33,7 @@ public partial class App : Application
                 {
                     // A single-location user can go straight to the app
                     MainPage = new MainShell();
+                    await UsagePopupService.CheckAndShowPopupAsync();
                 }
             }
             else
@@ -54,6 +55,7 @@ public partial class App : Application
                         // A single-location offline user can go straight to the app
                         SessionService.CurrentRestaurant = offlineRestaurants.First();
                         MainPage = new MainShell();
+                        await UsagePopupService.CheckAndShowPopupAsync();
                     }
                 }
                 else

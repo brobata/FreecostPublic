@@ -176,17 +176,17 @@ namespace Freecost
                 ListPanel.IsVisible = false;
                 DetailPanel.IsVisible = true;
                 EntreeDetailsView.IsVisible = true;
-                SelectEntreeLabel.IsVisible = false;
+                SelectEntreeView.IsVisible = false;
 #else
                 EntreeDetailsView.IsVisible = true;
-                SelectEntreeLabel.IsVisible = false;
+                SelectEntreeView.IsVisible = false;
 #endif
             }
             else
             {
 #if !ANDROID
                 EntreeDetailsView.IsVisible = false;
-                SelectEntreeLabel.IsVisible = true;
+                SelectEntreeView.IsVisible = true;
 #endif
             }
         }

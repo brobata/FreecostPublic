@@ -175,17 +175,17 @@ namespace Freecost
                 ListPanel.IsVisible = false;
                 DetailPanel.IsVisible = true;
                 RecipeDetailsView.IsVisible = true;
-                SelectRecipeLabel.IsVisible = false;
+                SelectRecipeView.IsVisible = false;
 #else
                 RecipeDetailsView.IsVisible = true;
-                SelectRecipeLabel.IsVisible = false;
+                SelectRecipeView.IsVisible = false;
 #endif
             }
             else
             {
 #if !ANDROID
                 RecipeDetailsView.IsVisible = false;
-                SelectRecipeLabel.IsVisible = true;
+                SelectRecipeView.IsVisible = true;
 #endif
             }
         }

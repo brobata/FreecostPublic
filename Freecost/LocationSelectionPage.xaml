@@ -10,7 +10,6 @@
         HorizontalOptions="Center">
 
         <Frame
-            Style="{StaticResource Frame}"
             Padding="30"
             Margin="20"
             WidthRequest="400"

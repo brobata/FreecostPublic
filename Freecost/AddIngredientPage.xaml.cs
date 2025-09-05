@@ -43,7 +43,8 @@ public partial class AddIngredientPage : ContentPage
 
         if (SessionService.IsOffline)
         {
-            var ingredients = await LocalStorageService.LoadAsync<IngredientCsvRecord>();
+            // Pass the restaurantId when loading and saving
+            var ingredients = await LocalStorageService.LoadAsync<IngredientCsvRecord>(SessionService.CurrentRestaurant?.Id);
             if (string.IsNullOrEmpty(Ingredient.Id))
             {
                 Ingredient.Id = Guid.NewGuid().ToString();
@@ -58,7 +59,7 @@ public partial class AddIngredientPage : ContentPage
                     ingredients.Add(Ingredient);
                 }
             }
-            await LocalStorageService.SaveAsync(ingredients);
+            await LocalStorageService.SaveAsync(ingredients, SessionService.CurrentRestaurant?.Id);
         }
         else
         {

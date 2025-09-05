@@ -323,7 +323,8 @@ namespace Freecost
 
             if (SessionService.IsOffline)
             {
-                var recipes = await LocalStorageService.LoadAsync<Recipe>();
+                // Pass the restaurantId when loading and saving
+                var recipes = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
                 if (string.IsNullOrEmpty(RecipeData.Id))
                 {
                     RecipeData.Id = Guid.NewGuid().ToString();
@@ -338,7 +339,7 @@ namespace Freecost
                         recipes.Add(RecipeData);
                     }
                 }
-                await LocalStorageService.SaveAsync(recipes);
+                await LocalStorageService.SaveAsync(recipes, restaurantId);
             }
             else
             {

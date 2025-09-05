@@ -26,7 +26,7 @@ public partial class LocationSelectionPage : ContentPage
         }
     }
 
-    private void OnConfirmClicked(object sender, EventArgs e)
+    private async void OnConfirmClicked(object sender, EventArgs e)
     {
         if (LocationPicker.SelectedItem is Restaurant selectedRestaurant)
         {
@@ -52,6 +52,7 @@ public partial class LocationSelectionPage : ContentPage
                 }
 #endif
                 Application.Current.MainPage = new MainShell();
+                await UsagePopupService.CheckAndShowPopupAsync();
             }
         }
     }

@@ -137,7 +137,10 @@
                         </OnPlatform>
                     </Button.IsVisible>
                 </Button>
-                <Label x:Name="SelectRecipeLabel" Text="Select a recipe to see details" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="True" Style="{StaticResource SubHeadline}" Margin="0,50,0,0"/>
+                <VerticalStackLayout x:Name="SelectRecipeView" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="True" Margin="0,50,0,0" Spacing="20">
+                    <Label Text="Select a recipe to see details" Style="{StaticResource SubHeadline}" />
+                    <Image Source="logo.png" Aspect="AspectFit" MaximumWidthRequest="450" />
+                </VerticalStackLayout>
                 <VerticalStackLayout x:Name="RecipeDetailsView" IsVisible="False" Spacing="10">
                     <Label x:Name="RecipeNameLabel" Style="{StaticResource Headline}" HorizontalOptions="Center" Margin="0,0,0,10"/>
                     <Border Stroke="{StaticResource BorderColor}" StrokeThickness="2" Padding="2">

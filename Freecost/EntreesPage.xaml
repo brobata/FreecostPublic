@@ -147,8 +147,10 @@
                         </OnPlatform>
                     </Button.IsVisible>
                 </Button>
-                <Label x:Name="SelectEntreeLabel" Text="Select an entree to see details" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="True" Style="{StaticResource SubHeadline}" Margin="0,50,0,0"/>
-
+                <VerticalStackLayout x:Name="SelectEntreeView" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="True" Margin="0,50,0,0" Spacing="20">
+                    <Label Text="Select an entree to see details" Style="{StaticResource SubHeadline}" />
+                    <Image Source="logo.png" Aspect="AspectFit" MaximumWidthRequest="450" />
+                </VerticalStackLayout>
                 <VerticalStackLayout x:Name="EntreeDetailsView" IsVisible="False" Spacing="10">
                     <Label x:Name="EntreeNameLabel" Style="{StaticResource Headline}" HorizontalOptions="Center" Margin="0,0,0,10"/>
                     <Border Stroke="{StaticResource BorderColor}" StrokeThickness="2" Padding="2">

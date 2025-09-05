@@ -15,6 +15,7 @@
 
 		<ApplicationTitle>Freecost</ApplicationTitle>
 		<ApplicationId>com.companyname.freecost</ApplicationId>
+
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
 
@@ -29,7 +30,7 @@
 	<ItemGroup>
 
 		<MauiIcon Include="Resources\AppIcon\appicon.png" />
-		
+
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
 
 		<MauiImage Include="Resources\Images\*" />

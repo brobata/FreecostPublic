@@ -202,7 +202,8 @@ public partial class AddEntreePage : ContentPage, INotifyPropertyChanged
 
         if (SessionService.IsOffline)
         {
-            var entrees = await LocalStorageService.LoadAsync<Entree>();
+            // Pass the restaurantId when loading and saving
+            var entrees = await LocalStorageService.LoadAsync<Entree>(restaurantId);
             if (string.IsNullOrEmpty(EntreeData.Id))
             {
                 EntreeData.Id = Guid.NewGuid().ToString();
@@ -217,7 +218,7 @@ public partial class AddEntreePage : ContentPage, INotifyPropertyChanged
                     entrees.Add(EntreeData);
                 }
             }
-            await LocalStorageService.SaveAsync(entrees);
+            await LocalStorageService.SaveAsync(entrees, restaurantId);
         }
         else
         {

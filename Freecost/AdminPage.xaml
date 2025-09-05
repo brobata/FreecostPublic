@@ -3,11 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Freecost.AdminPage"
              Title="Admin">
-    <VerticalStackLayout>
+    <VerticalStackLayout Spacing="20" Padding="30">
         <Label
             Text="Admin Console"
-            VerticalOptions="Center"
+            Style="{StaticResource Headline}"
             HorizontalOptions="Center" />
-        <Button Text="Manage Import Maps" Clicked="OnManageImportMapsClicked" />
+
+        <Button Text="Manage Import Maps" 
+                Clicked="OnManageImportMapsClicked" 
+                HorizontalOptions="Fill" />
+
+        <Button Text="Reset Popup Counter (for testing)"
+                Clicked="OnResetPopupCounterClicked"
+                HorizontalOptions="Fill" />
+
     </VerticalStackLayout>
 </ContentPage>
