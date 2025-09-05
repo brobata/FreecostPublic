@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.FlyoutContentView"
+             BackgroundColor="{StaticResource Gray950}">
+    <Grid RowDefinitions="Auto, *, Auto" BackgroundColor="{StaticResource Gray950}">
+
+        <Label Text="Freecost" FontSize="24" TextColor="White" Padding="20" FontAttributes="Bold"/>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="10" Padding="20,0">
+            <Button Text="Admin" Command="{Binding GoToAdminCommand}" IsVisible="{Binding IsAdmin}" HorizontalOptions="Fill" Style="{StaticResource EdgyButtonStyle}"/>
+            <Button Text="Change Location" Command="{Binding ChangeLocationCommand}" IsEnabled="{Binding CanChangeLocation}" HorizontalOptions="Fill" Style="{StaticResource EdgyButtonStyle}"/>
+            <Button Text="Settings" Command="{Binding GoToSettingsCommand}" HorizontalOptions="Fill" Style="{StaticResource EdgyButtonStyle}"/>
+            <Button Text="Exit" Command="{Binding ExitCommand}" HorizontalOptions="Fill" Style="{StaticResource EdgyButtonStyle}"/>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="2" Spacing="10" Padding="20">
+            <Label Text="{Binding StatusText}" TextColor="{StaticResource Gray200}" FontSize="12" HorizontalOptions="Center"/>
+            <Button Text="Login" Command="{Binding LoginCommand}" IsVisible="{Binding IsNotLoggedIn}" BackgroundColor="{StaticResource Accent}" TextColor="White" Style="{StaticResource EdgyButtonStyle}"/>
+            <Button Text="Logout" Command="{Binding LogoutCommand}" IsVisible="{Binding IsLoggedIn}" Style="{StaticResource EdgyButtonStyle}"/>
+        </VerticalStackLayout>
+    </Grid>
+</ContentView>

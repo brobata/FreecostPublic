@@ -4,7 +4,7 @@
              x:Class="Freecost.SettingsPage"
              ControlTemplate="{StaticResource MainPageTemplate}"
              Title="Settings">
-    
+
     <VerticalStackLayout Spacing="20" Padding="30">
         <Label
             Text="Settings"
@@ -14,7 +14,8 @@
         <Button
             Text="Sync with Cloud"
             Clicked="OnSyncClicked"
-            HorizontalOptions="Fill" />
+            HorizontalOptions="Fill" 
+            IsEnabled="{Binding IsLoggedIn}" />
 
         <Button
             Text="Import Data"
@@ -27,9 +28,24 @@
             HorizontalOptions="Fill" />
 
         <Button
+            Text="Buy Me a Coffee"
+            Clicked="OnBuyMeACoffeeClicked"
+            HorizontalOptions="Fill" 
+            BackgroundColor="{StaticResource Accent}"
+            TextColor="White"/>
+
+        <Button
             Text="Login"
             Clicked="OnLoginClicked"
             HorizontalOptions="Fill"
             IsVisible="{Binding IsNotLoggedIn}" />
+
+        <Button
+            Text="Logout"
+            Clicked="OnLogoutClicked"
+            HorizontalOptions="Fill"
+            IsVisible="{Binding IsLoggedIn}"
+            BackgroundColor="{StaticResource DeleteButtonColor}" />
+
     </VerticalStackLayout>
 </ContentPage>

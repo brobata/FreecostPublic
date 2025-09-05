@@ -51,4 +51,16 @@
 		<PackageReference Include="CommunityToolkit.Maui" Version="9.0.2" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Compile Update="FlyoutContentView.xaml.cs">
+	    <DependentUpon>FlyoutContentView.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiXaml Update="FlyoutContentView.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	</ItemGroup>
+
 </Project>

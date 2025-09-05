@@ -25,7 +25,7 @@
 
                 <Label Text="Available Locations" />
 
-                <Border Style="{StaticResource Border}">
+                <Border>
                     <Grid ColumnDefinitions="*, Auto">
                         <Picker
             Grid.Column="0"

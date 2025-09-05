@@ -6,8 +6,11 @@ public partial class App : Application
     {
         InitializeComponent();
 
-        // Set a temporary loading page while the startup logic runs
-        MainPage = new ContentPage();
+        // Initialize Firestore early
+        _ = FirestoreService.InitializeAsync();
+
+        // Set the main page to the Shell, which defaults to RecipesPage
+        MainPage = new MainShell();
     }
 
     protected override async void OnStart()

@@ -6,21 +6,7 @@
     xmlns:local="clr-namespace:Freecost">
 
     <ControlTemplate x:Key="MainPageTemplate">
-        <Grid>
-            <ContentPresenter />
-
-            <Border StrokeThickness="0"
-                    BackgroundColor="#4A4A4A"
-                    Padding="10,5"
-                    HorizontalOptions="End"
-                    VerticalOptions="End"
-                    Margin="20"
-                    StrokeShape="RoundRectangle 10">
-                <Label Text="{Binding Source={RelativeSource AncestorType={x:Type local:MainShell}}, Path=StatusText}"
-                       TextColor="White"
-                       FontSize="12" />
-            </Border>
-        </Grid>
+        <ContentPresenter />
     </ControlTemplate>
 
     <Style TargetType="Page" ApplyToDerivedTypes="True">
@@ -142,7 +128,6 @@
         <Setter Property="BackgroundColor" Value="{StaticResource CardBackgroundColor}" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14" />
-
         <Setter Property="PlaceholderColor" Value="{StaticResource SecondaryTextColor}" />
         <Setter Property="MinimumHeightRequest" Value="50"/>
     </Style>
@@ -181,7 +166,6 @@
     <Style x:Key="SubHeadline" TargetType="Label">
         <Setter Property="FontSize" Value="24" />
         <Setter Property="FontFamily" Value="OpenSansSemibold"/>
-
         <Setter Property="TextColor" Value="{StaticResource Tertiary}"/>
         <Setter Property="HorizontalOptions" Value="Center" />
     </Style>

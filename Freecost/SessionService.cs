@@ -16,6 +16,7 @@ namespace Freecost
         public static List<Restaurant>? PermittedRestaurants { get; set; }
         public static Restaurant? CurrentRestaurant { get; set; }
         public static bool IsOffline { get; set; }
+        public static string? DefaultRestaurantId { get; set; }
 
         // UI-Bound Properties
         public static bool IsLoggedIn => !string.IsNullOrEmpty(AuthToken);
@@ -36,6 +37,7 @@ namespace Freecost
             UserUid = Preferences.Get("UserUid", string.Empty);
             UserRole = Preferences.Get("UserRole", string.Empty);
             CurrentUserEmail = Preferences.Get("CurrentUserEmail", string.Empty);
+            DefaultRestaurantId = Preferences.Get("DefaultRestaurantId", string.Empty);
             IsOffline = false;
 
             var restaurantsJson = Preferences.Get("PermittedRestaurants", string.Empty);
@@ -62,6 +64,7 @@ namespace Freecost
             Preferences.Set("UserUid", UserUid);
             Preferences.Set("UserRole", UserRole);
             Preferences.Set("CurrentUserEmail", CurrentUserEmail);
+            Preferences.Set("DefaultRestaurantId", DefaultRestaurantId);
 
             if (PermittedRestaurants != null)
                 Preferences.Set("PermittedRestaurants", JsonSerializer.Serialize(PermittedRestaurants));
@@ -79,6 +82,7 @@ namespace Freecost
             PermittedRestaurants = null;
             CurrentRestaurant = null;
             IsOffline = false;
+            DefaultRestaurantId = null;
 
             Preferences.Remove("AuthToken");
             Preferences.Remove("UserUid");
@@ -86,6 +90,7 @@ namespace Freecost
             Preferences.Remove("CurrentUserEmail");
             Preferences.Remove("PermittedRestaurants");
             Preferences.Remove("CurrentRestaurant");
+            Preferences.Remove("DefaultRestaurantId");
 
             NotifyStateChanged();
         }

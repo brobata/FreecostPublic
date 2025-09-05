@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Google.Cloud.Firestore;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace Freecost;
 
@@ -18,6 +19,7 @@ public partial class LoginPage : ContentPage
     public LoginPage()
     {
         InitializeComponent();
+        db = FirestoreService.Db;
         LoadCredentials();
     }
 
@@ -33,8 +35,6 @@ public partial class LoginPage : ContentPage
 
     private async void OnLoginClicked(object sender, EventArgs e)
     {
-        await FirestoreService.InitializeAsync();
-        db = FirestoreService.Db;
         if (db == null)
         {
             await DisplayAlert("Database Error", "Could not connect to the database.", "OK");
@@ -88,7 +88,6 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                // Set session properties
                 SessionService.UserUid = userUid;
                 SessionService.AuthToken = idToken;
                 SessionService.CurrentUserEmail = email;
@@ -112,19 +111,18 @@ public partial class LoginPage : ContentPage
                         }
                     }
                     SessionService.PermittedRestaurants = restaurants;
-                    await LocalStorageService.SaveAsync(restaurants); // Save for offline use
+                    await LocalStorageService.SaveAsync(restaurants);
 
-                    if (restaurants.Count == 1)
+                    if (string.IsNullOrEmpty(SessionService.DefaultRestaurantId))
                     {
-                        SessionService.CurrentRestaurant = restaurants[0];
-                        SessionService.SaveSession(); // Persist the session
-                        if (Application.Current != null) Application.Current.MainPage = new MainShell();
+                        SessionService.DefaultRestaurantId = restaurants.FirstOrDefault()?.Id;
                     }
-                    else
-                    {
-                        SessionService.SaveSession(); // Persist the session before navigating
-                        await Navigation.PushAsync(new LocationSelectionPage());
-                    }
+
+                    SessionService.CurrentRestaurant = restaurants.FirstOrDefault(r => r.Id == SessionService.DefaultRestaurantId) ?? restaurants.FirstOrDefault();
+                    SessionService.SaveSession();
+
+                    if (Application.Current != null)
+                        Application.Current.MainPage = new MainShell();
                 }
                 else
                 {
@@ -150,14 +148,15 @@ public partial class LoginPage : ContentPage
         if (restaurants != null && restaurants.Any())
         {
             SessionService.PermittedRestaurants = restaurants;
+            if (Application.Current != null) Application.Current.MainPage = new MainShell();
+
             if (restaurants.Count > 1)
             {
-                await Navigation.PushAsync(new LocationSelectionPage());
+                await Shell.Current.GoToAsync(nameof(LocationSelectionPage));
             }
             else
             {
                 SessionService.CurrentRestaurant = restaurants.First();
-                if (Application.Current != null) Application.Current.MainPage = new MainShell();
             }
         }
         else
