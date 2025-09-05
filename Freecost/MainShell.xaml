@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="Freecost.MainShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:Freecost"
+    Shell.FlyoutBehavior="Flyout"
+    Title="Freecost">
+
+    <Shell.ItemTemplate>
+        <DataTemplate>
+            <Grid Padding="20,10">
+                <Label Text="{Binding Title}" TextColor="White" VerticalTextAlignment="Center"/>
+            </Grid>
+        </DataTemplate>
+    </Shell.ItemTemplate>
+
+    <Shell.MenuItemTemplate>
+        <DataTemplate>
+            <Grid Padding="20,10">
+                <Label Text="{Binding Text}" TextColor="White" VerticalTextAlignment="Center"/>
+            </Grid>
+        </DataTemplate>
+    </Shell.MenuItemTemplate>
+
+    <TabBar>
+        <ShellContent
+            Title="Recipes"
+            ContentTemplate="{DataTemplate local:RecipesPage}"
+            Route="RecipesPage" />
+        <ShellContent
+            Title="Entrees"
+            ContentTemplate="{DataTemplate local:EntreesPage}"
+            Route="EntreesPage" />
+        <ShellContent
+            Title="Ingredients"
+            ContentTemplate="{DataTemplate local:IngredientsPage}"
+            Route="IngredientsPage" />
+        <ShellContent
+            Title="Settings"
+            ContentTemplate="{DataTemplate local:SettingsPage}"
+            Route="SettingsPage" />
+    </TabBar>
+
+    <ShellContent
+        Title="Admin"
+        ContentTemplate="{DataTemplate local:AdminPage}"
+        Route="AdminPage"
+        IsVisible="{Binding IsAdmin}" />
+
+    <MenuItem Text="Settings"
+              Clicked="OnSettingsClicked" />
+    <MenuItem Text="Change Location"
+              Clicked="OnChangeLocationClicked" />
+    <MenuItem Text="Exit"
+              Clicked="OnExitClicked" />
+
+</Shell>
