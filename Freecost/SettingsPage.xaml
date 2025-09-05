@@ -44,8 +44,7 @@
             Text="Logout"
             Clicked="OnLogoutClicked"
             HorizontalOptions="Fill"
-            IsVisible="{Binding IsLoggedIn}"
-            BackgroundColor="{StaticResource DeleteButtonColor}" />
+            IsVisible="{Binding IsLoggedIn}" />
 
     </VerticalStackLayout>
 </ContentPage>

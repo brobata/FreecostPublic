@@ -19,6 +19,7 @@
         <Setter Property="BackgroundColor" Value="{StaticResource PageBackgroundColor}" />
     </Style>
 
+
     <Style TargetType="Shell" ApplyToDerivedTypes="True">
         <Setter Property="Shell.BackgroundColor" Value="{StaticResource Secondary}" />
         <Setter Property="Shell.ForegroundColor" Value="{StaticResource White}" />
@@ -96,7 +97,6 @@
         </Setter>
     </Style>
 
-
     <Style x:Key="ListDataLabel" TargetType="Label">
         <Setter Property="VerticalOptions" Value="Center" />
         <Setter Property="HorizontalOptions" Value="Fill" />
@@ -122,6 +122,29 @@
         <Setter Property="MinimumHeightRequest" Value="50"/>
     </Style>
 
+    <Style x:Key="FlyoutItemStyle" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="Transparent"/>
+        <Setter Property="StrokeThickness" Value="0"/>
+        <Setter Property="Padding" Value="24,14"/>
+        <Setter Property="MinimumHeightRequest" Value="50"/>
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="Disabled">
+                        <VisualState.Setters>
+                            <Setter Property="Opacity" Value="0.5" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="{StaticResource Gray900}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style> >
 
     <Style TargetType="Entry">
         <Setter Property="TextColor" Value="{StaticResource PrimaryTextColor}" />
@@ -170,7 +193,6 @@
         <Setter Property="HorizontalOptions" Value="Center" />
     </Style>
 
-
     <Style TargetType="Frame">
         <Setter Property="HasShadow" Value="True" />
         <Setter Property="BorderColor" Value="{StaticResource BorderColor}" />
@@ -185,7 +207,6 @@
         <Setter Property="StrokeShape" Value="Rectangle"/>
         <Setter Property="BackgroundColor" Value="{StaticResource CardBackgroundColor}"/>
         <Setter Property="Padding" Value="2"/>
-
     </Style>
 
     <Style TargetType="ActivityIndicator">

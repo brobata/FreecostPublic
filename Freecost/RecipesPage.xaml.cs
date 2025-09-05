@@ -152,10 +152,21 @@ namespace Freecost
 
         private void OnRecipeSelected(object sender, SelectedItemChangedEventArgs e)
         {
+            // First, un-select the previously selected item if it exists
+            if (_selectedRecipe != null)
+            {
+                _selectedRecipe.IsSelected = false;
+            }
+
+            // Get the newly selected item
             _selectedRecipe = e.SelectedItem as RecipeDisplayRecord;
 
             if (_selectedRecipe != null)
             {
+                // Set the IsSelected property to true to trigger the highlight
+                _selectedRecipe.IsSelected = true;
+
+                // The rest of your logic to display details
                 RecipeNameLabel.Text = _selectedRecipe.Name;
                 RecipeImage.Source = _selectedRecipe.PhotoUrl;
 
@@ -195,6 +206,11 @@ namespace Freecost
 #if ANDROID
             ListPanel.IsVisible = true;
             DetailPanel.IsVisible = false;
+            if (_selectedRecipe != null)
+            {
+                _selectedRecipe.IsSelected = false;
+                _selectedRecipe = null;
+            }
             RecipesListView.SelectedItem = null;
 #endif
         }

@@ -154,10 +154,18 @@ namespace Freecost
 
         private void OnEntreeSelected(object sender, SelectedItemChangedEventArgs e)
         {
+            // First, un-select the previously selected item if it exists
+            if (_selectedEntree != null)
+            {
+                _selectedEntree.IsSelected = false;
+            }
+
             _selectedEntree = e.SelectedItem as EntreeDisplayRecord;
 
             if (_selectedEntree != null)
             {
+                _selectedEntree.IsSelected = true;
+
                 EntreeNameLabel.Text = _selectedEntree.Name;
                 EntreeImage.Source = _selectedEntree.PhotoUrl;
 
@@ -196,6 +204,11 @@ namespace Freecost
 #if ANDROID
             ListPanel.IsVisible = true;
             DetailPanel.IsVisible = false;
+            if (_selectedEntree != null)
+            {
+                _selectedEntree.IsSelected = false;
+                _selectedEntree = null;
+            }
             EntreesListView.SelectedItem = null;
 #endif
         }

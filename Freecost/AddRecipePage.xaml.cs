@@ -102,6 +102,8 @@ namespace Freecost
 
         private async void OnUploadImageClicked(object sender, EventArgs e)
         {
+            await AuthService.RefreshAuthTokenIfNeededAsync(); // Added token refresh
+
             try
             {
                 var result = await FilePicker.PickAsync(new PickOptions { PickerTitle = "Please select an image file", FileTypes = FilePickerFileType.Images });

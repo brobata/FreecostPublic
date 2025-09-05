@@ -11,6 +11,7 @@ namespace Freecost
         public bool IsLoggedIn => SessionService.IsLoggedIn;
         public bool IsNotLoggedIn => !SessionService.IsLoggedIn;
         public bool CanChangeLocation => SessionService.IsLoggedIn && (SessionService.PermittedRestaurants?.Count > 1);
+        public string? CurrentLocationName => SessionService.CurrentRestaurant?.Name;
 
         public ICommand GoToSettingsCommand { get; }
         public ICommand ChangeLocationCommand { get; }
@@ -56,10 +57,11 @@ namespace Freecost
             if (!string.IsNullOrEmpty(savedToken))
             {
                 SessionService.RestoreSession();
+                var lastUsedId = Preferences.Get("LastUsedRestaurantId", string.Empty);
                 if (SessionService.PermittedRestaurants != null && SessionService.PermittedRestaurants.Any())
                 {
-                    var defaultRestaurant = SessionService.PermittedRestaurants.FirstOrDefault(r => r.Id == SessionService.DefaultRestaurantId);
-                    SessionService.CurrentRestaurant = defaultRestaurant ?? SessionService.PermittedRestaurants.FirstOrDefault();
+                    var lastUsedRestaurant = SessionService.PermittedRestaurants.FirstOrDefault(r => r.Id == lastUsedId);
+                    SessionService.CurrentRestaurant = lastUsedRestaurant ?? SessionService.PermittedRestaurants.FirstOrDefault();
                 }
             }
             else
@@ -69,9 +71,12 @@ namespace Freecost
                 {
                     SessionService.StartOfflineSession();
                     SessionService.PermittedRestaurants = offlineRestaurants;
-                    SessionService.CurrentRestaurant = offlineRestaurants.FirstOrDefault();
+                    var lastUsedId = Preferences.Get("LastUsedRestaurantId", string.Empty);
+                    var lastUsedRestaurant = offlineRestaurants.FirstOrDefault(r => r.Id == lastUsedId);
+                    SessionService.CurrentRestaurant = lastUsedRestaurant ?? offlineRestaurants.FirstOrDefault();
                 }
             }
+            OnPropertyChanged(nameof(CurrentLocationName));
         }
 
         private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
@@ -81,6 +86,7 @@ namespace Freecost
             OnPropertyChanged(nameof(IsLoggedIn));
             OnPropertyChanged(nameof(IsNotLoggedIn));
             OnPropertyChanged(nameof(CanChangeLocation));
+            OnPropertyChanged(nameof(CurrentLocationName));
         }
 
         private async Task GoToAdminPage()
@@ -96,8 +102,6 @@ namespace Freecost
             await Shell.Current.GoToAsync("//SettingsPage");
             Shell.Current.FlyoutIsPresented = false;
         }
-
-
 
         private void OnChangeLocationClicked()
         {

@@ -79,6 +79,14 @@
                             <OnPlatform x:TypeArguments="View">
                                 <On Platform="Android">
                                     <Frame Padding="10" Margin="5" BorderColor="{StaticResource BorderColor}" CornerRadius="5">
+                                        <Frame.Triggers>
+                                            <DataTrigger TargetType="Frame" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Frame" Binding="{Binding IsSelected}" Value="False">
+                                                <Setter Property="BackgroundColor" Value="Transparent" />
+                                            </DataTrigger>
+                                        </Frame.Triggers>
                                         <VerticalStackLayout>
                                             <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="Medium"/>
                                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="*,*,*,*,*" ColumnSpacing="10" Margin="0,5,0,0">
@@ -104,16 +112,14 @@
                                 </On>
                                 <On Platform="WinUI, MacCatalyst, iOS">
                                     <Grid ColumnSpacing="10" Padding="12,5">
-                                        <VisualStateManager.VisualStateGroups>
-                                            <VisualStateGroup Name="CommonStates">
-                                                <VisualState Name="Normal" />
-                                                <VisualState Name="Selected">
-                                                    <VisualState.Setters>
-                                                        <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
-                                                    </VisualState.Setters>
-                                                </VisualState>
-                                            </VisualStateGroup>
-                                        </VisualStateManager.VisualStateGroups>
+                                        <Grid.Triggers>
+                                            <DataTrigger TargetType="Grid" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Grid" Binding="{Binding IsSelected}" Value="False">
+                                                <Setter Property="BackgroundColor" Value="Transparent" />
+                                            </DataTrigger>
+                                        </Grid.Triggers>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="3*" />
                                             <ColumnDefinition Width="*" />

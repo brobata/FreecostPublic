@@ -9,7 +9,7 @@ public partial class App : Application
         // Initialize Firestore early
         _ = FirestoreService.InitializeAsync();
 
-        // Set the main page to the Shell, which defaults to RecipesPage
+        // Set the main page to the Shell
         MainPage = new MainShell();
     }
 
@@ -22,26 +22,43 @@ public partial class App : Application
         {
             await FirestoreService.InitializeAsync();
 
-            var savedToken = Preferences.Get("AuthToken", string.Empty);
-            if (!string.IsNullOrEmpty(savedToken))
+            var savedRefreshToken = Preferences.Get("RefreshToken", string.Empty);
+            if (!string.IsNullOrEmpty(savedRefreshToken))
             {
-                // A user session was saved - start in ONLINE mode
+                // A session was saved - attempt to refresh the token
                 SessionService.RestoreSession();
-                if (SessionService.PermittedRestaurants != null && SessionService.PermittedRestaurants.Count > 1)
+                bool refreshedSuccessfully = await AuthService.RefreshAuthTokenIfNeededAsync();
+
+                if (!refreshedSuccessfully)
                 {
-                    // A multi-location user needs to choose a location first
+                    // AuthService handles navigation to LoginPage
+                    return;
+                }
+
+                // *** MODIFIED LOGIC STARTS HERE ***
+
+                // Check if a location was already saved from a previous session
+                if (SessionService.CurrentRestaurant != null)
+                {
+                    // A location is already selected, go directly to the app.
+                    MainPage = new MainShell();
+                    await UsagePopupService.CheckAndShowPopupAsync();
+                }
+                // If no location is saved and the user has access to multiple, show the selection page.
+                else if (SessionService.PermittedRestaurants != null && SessionService.PermittedRestaurants.Count > 1)
+                {
                     MainPage = new LocationSelectionPage();
                 }
                 else
                 {
-                    // A single-location user can go straight to the app
+                    // User has access to 0 or 1 locations, so no selection is needed.
                     MainPage = new MainShell();
                     await UsagePopupService.CheckAndShowPopupAsync();
                 }
             }
             else
             {
-                // No saved session - check if we can start in OFFLINE mode
+                // No saved session - check for offline data
                 var offlineRestaurants = await LocalStorageService.LoadAsync<Restaurant>();
                 if (offlineRestaurants.Any())
                 {
@@ -50,12 +67,10 @@ public partial class App : Application
 
                     if (offlineRestaurants.Count > 1)
                     {
-                        // A multi-location offline user needs to choose a location
                         MainPage = new LocationSelectionPage();
                     }
                     else
                     {
-                        // A single-location offline user can go straight to the app
                         SessionService.CurrentRestaurant = offlineRestaurants.First();
                         MainPage = new MainShell();
                         await UsagePopupService.CheckAndShowPopupAsync();
@@ -63,7 +78,7 @@ public partial class App : Application
                 }
                 else
                 {
-                    // No saved session and no local data - must show the LoginPage
+                    // No session and no offline data, force login.
                     MainPage = new NavigationPage(new LoginPage());
                 }
             }

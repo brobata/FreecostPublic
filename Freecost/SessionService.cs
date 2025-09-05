@@ -11,6 +11,7 @@ namespace Freecost
         // Properties
         public static string? UserUid { get; set; }
         public static string? AuthToken { get; set; }
+        public static string? RefreshToken { get; set; } // Added
         public static string? UserRole { get; set; }
         public static string? CurrentUserEmail { get; set; }
         public static List<Restaurant>? PermittedRestaurants { get; set; }
@@ -34,6 +35,7 @@ namespace Freecost
         public static void RestoreSession()
         {
             AuthToken = Preferences.Get("AuthToken", string.Empty);
+            RefreshToken = Preferences.Get("RefreshToken", string.Empty); // Added
             UserUid = Preferences.Get("UserUid", string.Empty);
             UserRole = Preferences.Get("UserRole", string.Empty);
             CurrentUserEmail = Preferences.Get("CurrentUserEmail", string.Empty);
@@ -61,6 +63,7 @@ namespace Freecost
         public static void SaveSession()
         {
             Preferences.Set("AuthToken", AuthToken);
+            Preferences.Set("RefreshToken", RefreshToken); // Added
             Preferences.Set("UserUid", UserUid);
             Preferences.Set("UserRole", UserRole);
             Preferences.Set("CurrentUserEmail", CurrentUserEmail);
@@ -77,6 +80,7 @@ namespace Freecost
         {
             UserUid = null;
             AuthToken = null;
+            RefreshToken = null; // Added
             UserRole = null;
             CurrentUserEmail = null;
             PermittedRestaurants = null;
@@ -85,6 +89,7 @@ namespace Freecost
             DefaultRestaurantId = null;
 
             Preferences.Remove("AuthToken");
+            Preferences.Remove("RefreshToken"); // Added
             Preferences.Remove("UserUid");
             Preferences.Remove("UserRole");
             Preferences.Remove("CurrentUserEmail");

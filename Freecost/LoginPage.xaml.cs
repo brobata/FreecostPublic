@@ -72,6 +72,7 @@ public partial class LoginPage : ContentPage
                 var authData = JsonConvert.DeserializeObject<dynamic>(responseJson);
                 string? userUid = authData?.localId.ToString();
                 string? idToken = authData?.idToken.ToString();
+                string? refreshToken = authData?.refreshToken.ToString(); // Added
 
                 if (userUid == null)
                 {
@@ -90,6 +91,7 @@ public partial class LoginPage : ContentPage
 
                 SessionService.UserUid = userUid;
                 SessionService.AuthToken = idToken;
+                SessionService.RefreshToken = refreshToken; // Added
                 SessionService.CurrentUserEmail = email;
                 SessionService.UserRole = userSnapshot.GetValue<string>("role");
                 SessionService.IsOffline = false;
