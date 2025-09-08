@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Maui.Controls;
 using Plugin.Firebase.Firestore;
+using Plugin.Firebase.Core;
 
 namespace Freecost
 {
@@ -27,7 +28,6 @@ namespace Freecost
         public AddEditMapPage()
         {
             InitializeComponent();
-            // Initialize with empty fields for a new map
             _map = new ImportMap
             {
                 FieldMappings = new Dictionary<string, string>
@@ -64,16 +64,19 @@ namespace Freecost
                 if (doc.Exists)
                 {
                     _map = doc.ToObject<ImportMap>();
-                    _map.Id = doc.Id;
-                    MapNameEntry.Text = _map.MapName;
-                    SupplierNameEntry.Text = _map.SupplierName;
-                    HeaderRowEntry.Text = _map.HeaderRow.ToString();
-                    BuildMappingsUI();
-                    PackColumnEntry.Text = _map.PackColumn;
-                    SizeColumnEntry.Text = _map.SizeColumn;
-                    UnitColumnEntry.Text = _map.UnitColumn;
-                    CombinedQuantityUnitColumnEntry.Text = _map.CombinedQuantityUnitColumn;
-                    SplitCharacterEntry.Text = _map.SplitCharacter;
+                    if (_map != null)
+                    {
+                        _map.Id = doc.Id;
+                        MapNameEntry.Text = _map.MapName;
+                        SupplierNameEntry.Text = _map.SupplierName;
+                        HeaderRowEntry.Text = _map.HeaderRow.ToString();
+                        BuildMappingsUI();
+                        PackColumnEntry.Text = _map.PackColumn;
+                        SizeColumnEntry.Text = _map.SizeColumn;
+                        UnitColumnEntry.Text = _map.UnitColumn;
+                        CombinedQuantityUnitColumnEntry.Text = _map.CombinedQuantityUnitColumn;
+                        SplitCharacterEntry.Text = _map.SplitCharacter;
+                    }
                 }
             }
             catch (Exception ex)
@@ -133,3 +136,4 @@ namespace Freecost
         }
     }
 }
+

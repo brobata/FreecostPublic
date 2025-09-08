@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Plugin.Firebase.Firestore;
+using Plugin.Firebase.Core;
 
 namespace Freecost
 {
@@ -83,7 +84,7 @@ namespace Freecost
                 if (recipeToEdit.YieldUnit != null) YieldUnitPicker.SelectedItem = recipeToEdit.YieldUnit;
                 else YieldUnitPicker.SelectedIndex = -1;
                 PreviewImage.Source = recipeToEdit.PhotoUrl;
-                RefreshRecipeGrid();
+                _ = RefreshRecipeGrid();
             }
         }
 
@@ -178,6 +179,14 @@ namespace Freecost
                 OnAddStepClicked(this, EventArgs.Empty);
             }
         }
+
+        // This helper class needs to be inside AddRecipePage
+        public class IngredientDisplay
+        {
+            public string? DisplayName { get; set; }
+            public IngredientCsvRecord? OriginalIngredient { get; set; }
+        }
+
 
         private void OnIngredientPicker_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -403,7 +412,7 @@ namespace Freecost
                     }
                     else
                     {
-                        await collection.Document(RecipeData.Id).SetAsync(RecipeData, SetOptions.Overwrite);
+                        await collection.Document(RecipeData.Id).SetAsync(RecipeData);
                     }
                 }
 
@@ -427,3 +436,4 @@ namespace Freecost
         }
     }
 }
+

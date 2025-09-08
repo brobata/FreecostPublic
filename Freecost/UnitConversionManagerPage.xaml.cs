@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Google.Cloud.Firestore;
+using Plugin.Firebase.Firestore;
+using Plugin.Firebase.Core;
 
 namespace Freecost
 {
     public partial class UnitConversionManagerPage : ContentPage
     {
-        private FirestoreDb? db;
         private List<UnitConversion> _conversions = new List<UnitConversion>();
 
         public UnitConversionManagerPage()
@@ -30,15 +30,7 @@ namespace Freecost
             }
             else
             {
-                db = FirestoreService.Db;
-                if (db == null) return;
-                var snapshot = await db.Collection("unitConversions").GetSnapshotAsync();
-                _conversions = snapshot.Documents.Select(doc =>
-                {
-                    var conversion = doc.ConvertTo<UnitConversion>();
-                    conversion.Id = doc.Id;
-                    return conversion;
-                }).ToList();
+                _conversions = await FirestoreService.GetUnitConversionsAsync();
             }
             ConversionsListView.ItemsSource = _conversions;
         }
@@ -77,10 +69,9 @@ namespace Freecost
                         }
                         else
                         {
-                            db = FirestoreService.Db;
-                            if (db != null && conversion.Id != null)
+                            if (conversion.Id != null)
                             {
-                                await db.Collection("unitConversions").Document(conversion.Id).DeleteAsync();
+                                await CrossFirebase.Current.Firestore.Collection("unitConversions").Document(conversion.Id).DeleteAsync();
                             }
                         }
                         await LoadConversions();
@@ -95,3 +86,4 @@ namespace Freecost
         }
     }
 }
+

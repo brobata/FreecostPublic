@@ -1,7 +1,7 @@
-using Plugin.Firebase.Firestore;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Plugin.Firebase.Firestore;
 
 namespace Freecost
 {
@@ -169,5 +169,80 @@ namespace Freecost
         public string? Name { get; set; }
     }
 
-    // Your other classes like IngredientDisplayRecord, RecipeDisplayRecord, etc., remain the same
+    public class AllData
+    {
+        public List<IngredientCsvRecord> Ingredients { get; set; } = new();
+        public List<Recipe> Recipes { get; set; } = new();
+        public List<Entree> Entrees { get; set; } = new();
+        public List<ImportMap> ImportMaps { get; set; } = new();
+        public List<UnitConversion> UnitConversions { get; set; } = new();
+    }
+
+    public class IngredientDisplayRecord : IngredientCsvRecord, INotifyPropertyChanged
+    {
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsEven { get; set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+    public class RecipeDisplayRecord : Recipe, INotifyPropertyChanged
+    {
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+    public class EntreeDisplayRecord : Entree, INotifyPropertyChanged
+    {
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
 }
+

@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Google.Cloud.Firestore;
+using Plugin.Firebase.Firestore;
+using Plugin.Firebase.Core;
 
 namespace Freecost;
 
@@ -14,13 +15,11 @@ public partial class ColumnMappingPage : ContentPage
     private Dictionary<string, string> _fieldMappings = new Dictionary<string, string>();
     private string? _draggedItem;
 
-    private FirestoreDb? db;
-
-	public ColumnMappingPage()
-	{
-		InitializeComponent();
-		AppFieldsCollection.ItemsSource = AppFields;
-	}
+    public ColumnMappingPage()
+    {
+        InitializeComponent();
+        AppFieldsCollection.ItemsSource = AppFields;
+    }
 
     protected override void OnAppearing()
     {
@@ -34,13 +33,13 @@ public partial class ColumnMappingPage : ContentPage
 
     private void OnDragStarting(object sender, DragStartingEventArgs e)
     {
-        var label = (sender as Element)?.Parent as Label;
+        var label = sender as Label;
         _draggedItem = label?.Text;
     }
 
     private void OnDrop(object sender, DropEventArgs e)
     {
-        var label = (sender as Element)?.Parent as Label;
+        var label = sender as Label;
         var targetField = label?.Text;
 
         if (targetField != null && _draggedItem != null)
@@ -53,9 +52,6 @@ public partial class ColumnMappingPage : ContentPage
 
     private async void OnSaveMapClicked(object sender, EventArgs e)
     {
-        db = FirestoreService.Db;
-        if (db == null) return;
-
         var map = new ImportMap
         {
             MapName = MapNameEntry.Text,
@@ -69,8 +65,9 @@ public partial class ColumnMappingPage : ContentPage
             SplitCharacter = SplitCharacterEntry.Text
         };
 
-        await db.Collection("importMaps").AddAsync(map);
+        await CrossFirebase.Current.Firestore.Collection("importMaps").AddAsync(map);
 
         await Navigation.PopAsync();
     }
 }
+

@@ -7,15 +7,15 @@ using System.Web;
 using CsvHelper;
 using Microsoft.Maui.Storage;
 using OfficeOpenXml;
-using Google.Cloud.Firestore;
 using System.Text.Json;
 using CommunityToolkit.Maui.Storage;
+using Plugin.Firebase.Firestore;
+using Plugin.Firebase.Core;
 
 namespace Freecost;
 
 public partial class ImportMapManagerPage : ContentPage
 {
-    private FirestoreDb? db;
     private List<ImportMap> maps = new List<ImportMap>();
 
     public ImportMapManagerPage()
@@ -37,10 +37,7 @@ public partial class ImportMapManagerPage : ContentPage
         }
         else
         {
-            db = FirestoreService.Db;
-            if (db == null) return;
-            var snapshot = await db.Collection("importMaps").GetSnapshotAsync();
-            maps = snapshot.Documents.Select(doc => doc.ConvertTo<ImportMap>()).ToList();
+            maps = await FirestoreService.GetImportMapsAsync();
         }
         MapsListView.ItemsSource = maps;
     }
@@ -126,10 +123,9 @@ public partial class ImportMapManagerPage : ContentPage
                     }
                     else
                     {
-                        db = FirestoreService.Db;
-                        if (db != null && map.Id != null)
+                        if (map.Id != null)
                         {
-                            await db.Collection("importMaps").Document(map.Id).DeleteAsync();
+                            await CrossFirebase.Current.Firestore.Collection("importMaps").Document(map.Id).DeleteAsync();
                         }
                     }
                     await LoadMaps();
@@ -185,3 +181,4 @@ public partial class ImportMapManagerPage : ContentPage
         await Navigation.PopAsync();
     }
 }
+

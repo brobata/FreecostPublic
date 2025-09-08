@@ -4,7 +4,8 @@ using System.IO;
 using System.IO.Compression;
 using CommunityToolkit.Maui.Storage;
 using System.Linq;
-using Google.Cloud.Firestore;
+using Plugin.Firebase.Firestore;
+using Plugin.Firebase.Core;
 
 namespace Freecost;
 
@@ -180,34 +181,31 @@ public partial class SettingsPage : ContentPage
                 // If online, also save the new items to Firestore to prevent them from being overwritten
                 if (!SessionService.IsOffline)
                 {
-                    var db = FirestoreService.Db;
-                    if (db != null)
+                    var firestore = CrossFirebase.Current.Firestore;
+                    var batch = firestore.CreateBatch();
+
+                    // Add new ingredients to Firestore
+                    var ingredientsCollection = firestore.Collection("restaurants").Document(restaurantId).Collection("ingredients");
+                    foreach (var item in ingredientsToAdd)
                     {
-                        var batch = db.StartBatch();
-
-                        // Add new ingredients to Firestore
-                        var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-                        foreach (var item in ingredientsToAdd)
-                        {
-                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(ingredientsCollection.Document(item.Id), item);
-                        }
-
-                        // Add new recipes to Firestore
-                        var recipesCollection = db.Collection("recipes");
-                        foreach (var item in recipesToAdd)
-                        {
-                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(recipesCollection.Document(item.Id), item);
-                        }
-
-                        // Add new entrees to Firestore
-                        var entreesCollection = db.Collection("entrees");
-                        foreach (var item in entreesToAdd)
-                        {
-                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(entreesCollection.Document(item.Id), item);
-                        }
-
-                        await batch.CommitAsync();
+                        if (!string.IsNullOrEmpty(item.Id)) batch.Set(ingredientsCollection.Document(item.Id), item);
                     }
+
+                    // Add new recipes to Firestore
+                    var recipesCollection = firestore.Collection("recipes");
+                    foreach (var item in recipesToAdd)
+                    {
+                        if (!string.IsNullOrEmpty(item.Id)) batch.Set(recipesCollection.Document(item.Id), item);
+                    }
+
+                    // Add new entrees to Firestore
+                    var entreesCollection = firestore.Collection("entrees");
+                    foreach (var item in entreesToAdd)
+                    {
+                        if (!string.IsNullOrEmpty(item.Id)) batch.Set(entreesCollection.Document(item.Id), item);
+                    }
+
+                    await batch.CommitAsync();
                 }
 
                 await DisplayAlert("Import Complete", $"Data successfully imported to '{restaurantName}':\n\n" +
@@ -255,3 +253,4 @@ public partial class SettingsPage : ContentPage
         }
     }
 }
+

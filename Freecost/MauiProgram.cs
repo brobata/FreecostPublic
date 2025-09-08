@@ -3,14 +3,19 @@ using Microsoft.Maui.LifecycleEvents;
 using OfficeOpenXml;
 using CommunityToolkit.Maui;
 using Plugin.Firebase.Auth;
-using Plugin.Firebase.Core.Platforms.iOS;
-using Plugin.Firebase.Core.Platforms.Android;
+using Plugin.Firebase.Core;
 
+#if IOS
+using Plugin.Firebase.Core.Platforms.iOS;
+#elif ANDROID
+using Plugin.Firebase.Core.Platforms.Android;
+#endif
 
 #if WINDOWS
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using WinRT.Interop;
+using Plugin.Firebase.Bundled.Shared;
 #elif MACCATALYST
 using UIKit;
 using CoreGraphics;
@@ -27,7 +32,7 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
-            .RegisterFirebaseServices() // Add this
+            .RegisterFirebaseServices()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -40,7 +45,7 @@ public static class MauiProgram
                 {
                     window.ExtendsContentIntoTitleBar = false;
                     var handle = WindowNative.GetWindowHandle(window);
-                    var id = Win32Interop.GetWindowIdFromWindow(handle);
+                    var id = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(handle);
                     var appWindow = AppWindow.GetFromWindowId(id);
 
                     if (appWindow.Presenter is OverlappedPresenter overlappedPresenter)
@@ -65,14 +70,6 @@ public static class MauiProgram
                     return true;
                 }));
 #pragma warning restore CA1422 // Validate platform compatibility
-#elif IOS
-                events.AddiOS(iOS => iOS.FinishedLaunching((app, launchOptions) => {
-                    CrossFirebase.Initialize(app, launchOptions, CreateCrossFirebaseSettings());
-                    return false;
-                }));
-#elif ANDROID
-                events.AddAndroid(android => android.OnCreate((activity, bundle) =>
-                    CrossFirebase.Initialize(activity, bundle, CreateCrossFirebaseSettings())));
 #endif
             });
 
@@ -99,8 +96,8 @@ public static class MauiProgram
                 return false;
             }));
 #elif ANDROID
-            events.AddAndroid(android => android.OnCreate((activity, _, __) =>
-                CrossFirebase.Initialize(activity, CreateCrossFirebaseSettings())));
+            events.AddAndroid(android => android.OnCreate((activity, bundle) =>
+                CrossFirebase.Initialize(activity, bundle, CreateCrossFirebaseSettings())));
 #endif
         });
 
@@ -108,3 +105,4 @@ public static class MauiProgram
         return builder;
     }
 }
+

@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Plugin.Firebase.Firestore;
+using Plugin.Firebase.Core;
 
 namespace Freecost
 {
@@ -85,7 +86,7 @@ namespace Freecost
                 if (entreeToEdit.YieldUnit != null) YieldUnitPicker.SelectedItem = entreeToEdit.YieldUnit;
                 else YieldUnitPicker.SelectedIndex = -1;
                 PreviewImage.Source = entreeToEdit.PhotoUrl;
-                RefreshComponentsGrid();
+                _ = RefreshComponentsGrid();
             }
         }
 
@@ -299,7 +300,7 @@ namespace Freecost
                     }
                     else
                     {
-                        await collection.Document(EntreeData.Id).SetAsync(EntreeData, SetOptions.Overwrite);
+                        await collection.Document(EntreeData.Id).SetAsync(EntreeData);
                     }
                 }
 
@@ -462,3 +463,4 @@ namespace Freecost
         }
     }
 }
+
