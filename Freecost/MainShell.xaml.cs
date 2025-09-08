@@ -18,7 +18,6 @@ namespace Freecost
         public ICommand ExitCommand { get; }
         public ICommand LoginCommand { get; }
         public ICommand LogoutCommand { get; }
-        public ICommand GoToAdminCommand { get; }
 
         private bool _isFirstAppearance = true;
 
@@ -31,11 +30,9 @@ namespace Freecost
             ExitCommand = new Command(OnExitClicked);
             LoginCommand = new Command(OnLoginClicked);
             LogoutCommand = new Command(OnLogoutClicked);
-            GoToAdminCommand = new Command(async () => await GoToAdminPage());
 
             BindingContext = this;
             SessionService.StaticPropertyChanged += OnSessionChanged;
-            Routing.RegisterRoute(nameof(AdminPage), typeof(AdminPage));
             Routing.RegisterRoute(nameof(SettingsPage), typeof(SettingsPage));
             Routing.RegisterRoute(nameof(LocationSelectionPage), typeof(LocationSelectionPage));
         }
@@ -87,12 +84,6 @@ namespace Freecost
             OnPropertyChanged(nameof(IsNotLoggedIn));
             OnPropertyChanged(nameof(CanChangeLocation));
             OnPropertyChanged(nameof(CurrentLocationName));
-        }
-
-        private async Task GoToAdminPage()
-        {
-            await Shell.Current.GoToAsync(nameof(AdminPage));
-            Shell.Current.FlyoutIsPresented = false;
         }
 
         private async Task OnSettingsClicked()

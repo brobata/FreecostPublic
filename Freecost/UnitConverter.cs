@@ -9,7 +9,6 @@ namespace Freecost
     public static class UnitConverter
     {
         private static List<UnitConversion> _conversions = new List<UnitConversion>();
-        private static readonly List<string> displayUnits = new List<string> { "g", "kg", "oz", "lb", "ml", "l", "fl oz", "cup", "pt", "qt", "gal", "ea", "dz", "#AVG" };
 
         public static async Task InitializeAsync()
         {
@@ -59,13 +58,12 @@ namespace Freecost
 
         public static List<string> GetUnitsForCategory(string category)
         {
-            var categoryUnits = _conversions.Where(c => c.Category == category).Select(c => c.UnitName).ToList();
-            return displayUnits.Where(du => categoryUnits.Contains(du)).ToList();
+            return _conversions.Where(c => c.Category == category).Select(c => c.UnitName).ToList();
         }
 
         public static List<string> GetAllUnitNames()
         {
-            return displayUnits;
+            return _conversions.Select(c => c.UnitName).Distinct().ToList();
         }
     }
 }

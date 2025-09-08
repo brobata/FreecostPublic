@@ -27,15 +27,12 @@ namespace Freecost
         private IngredientDisplayRecord? _lastSelectedItem;
         private string _currentSortColumn = "ItemName";
         private bool _isSortAscending = true;
+        private bool _initialMapsCreated = false;
 
         public IngredientsPage()
         {
             InitializeComponent();
             SessionService.StaticPropertyChanged += OnSessionChanged;
-            if (!SessionService.IsOffline)
-            {
-                CreateInitialMaps();
-            }
         }
 
         private void OnRowDoubleTapped(object? sender, Microsoft.Maui.Controls.TappedEventArgs e)
@@ -64,9 +61,14 @@ namespace Freecost
             }
         }
 
-        protected override void OnAppearing()
+        protected override async void OnAppearing()
         {
             base.OnAppearing();
+            if (!_initialMapsCreated)
+            {
+                await CreateInitialMaps();
+                _initialMapsCreated = true;
+            }
             LoadData();
         }
 
@@ -408,8 +410,10 @@ namespace Freecost
         }
 
         #region Bulk Import Logic
-        private async void CreateInitialMaps()
+        private async Task CreateInitialMaps()
         {
+            if (SessionService.IsOffline) return;
+
             db = FirestoreService.Db;
             if (db == null) return;
 
@@ -747,5 +751,13 @@ namespace Freecost
             return headers.FirstOrDefault(h => h.Trim().Equals(headerName, StringComparison.OrdinalIgnoreCase)) ?? headerName;
         }
         #endregion
+
+        private void DisplayExceptionAlert(Exception ex, string location)
+        {
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await DisplayAlert("Crash Report", $"An error occurred in {location}:\n\n{ex.Message}\n\n{ex.StackTrace}", "OK");
+            });
+        }
     }
 }

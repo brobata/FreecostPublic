@@ -6,6 +6,9 @@ public partial class App : Application
     {
         InitializeComponent();
 
+        // Set up the global exception handler
+        AppDomain.CurrentDomain.UnhandledException += GlobalExceptionHandler.HandleException;
+
         // Initialize Firestore early
         _ = FirestoreService.InitializeAsync();
 
@@ -44,6 +47,7 @@ public partial class App : Application
                 {
                     // A location is already selected, go directly to the app.
                     MainPage = new MainShell();
+                    await UsagePopupService.CheckAndShowPopupAsync();
                 }
                 // If no location is saved and the user has access to multiple, show the selection page.
                 else if (SessionService.PermittedRestaurants != null && SessionService.PermittedRestaurants.Count > 1)
@@ -54,6 +58,7 @@ public partial class App : Application
                 {
                     // User has access to 0 or 1 locations, so no selection is needed.
                     MainPage = new MainShell();
+                    await UsagePopupService.CheckAndShowPopupAsync();
                 }
             }
             else
@@ -73,6 +78,7 @@ public partial class App : Application
                     {
                         SessionService.CurrentRestaurant = offlineRestaurants.First();
                         MainPage = new MainShell();
+                        await UsagePopupService.CheckAndShowPopupAsync();
                     }
                 }
                 else

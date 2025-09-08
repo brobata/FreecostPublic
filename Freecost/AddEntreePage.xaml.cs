@@ -36,7 +36,8 @@ namespace Freecost
 
         private string restaurantId;
         private FirestoreDb? db = FirestoreService.Db;
-        private List<IngredientCsvRecord>? masterIngredientList;
+        private List<IngredientCsvRecord> _masterIngredientList = new List<IngredientCsvRecord>();
+        private List<Recipe> _masterRecipeList = new List<Recipe>();
         private List<string> topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
         private List<AllergenSelection> Allergens { get; set; }
         private string? _uploadedPhotoUrl;
@@ -95,7 +96,7 @@ namespace Freecost
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            await LoadMasterIngredients();
+            await LoadAvailableComponents();
             await UpdateCostingSummary();
         }
 
@@ -120,30 +121,43 @@ namespace Freecost
 
         private async Task UpdateCostingSummary()
         {
-            if (masterIngredientList == null)
+            if (!_masterIngredientList.Any() && !_masterRecipeList.Any())
             {
-                await LoadMasterIngredients();
+                await LoadAvailableComponents();
             }
 
             double totalCost = 0;
-            if (masterIngredientList != null)
+            foreach (var entreeComponent in EntreeComponents)
             {
-                foreach (var entreeComponent in EntreeComponents)
+                var masterIngredient = _masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
+                if (masterIngredient != null)
                 {
-                    var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
-                    if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
+                    if (!string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
                     {
                         try
                         {
                             totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
                         }
-                        catch (ArgumentException)
+                        catch (ArgumentException) { /* Ignore for live summary */ }
+                    }
+                }
+                else
+                {
+                    var masterRecipe = _masterRecipeList.FirstOrDefault(r => r.Id == entreeComponent.ComponentId);
+                    if (masterRecipe != null)
+                    {
+                        if (!string.IsNullOrEmpty(masterRecipe.YieldUnit) && !string.IsNullOrEmpty(entreeComponent.Unit))
                         {
-                            // Ignore for live summary
+                            try
+                            {
+                                totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterRecipe.Yield, masterRecipe.YieldUnit, masterRecipe.FoodCost);
+                            }
+                            catch (ArgumentException) { /* Ignore for live summary */ }
                         }
                     }
                 }
             }
+
 
             TotalCostLabel.Text = totalCost.ToString("C");
 
@@ -234,14 +248,25 @@ namespace Freecost
                 EntreeData.PhotoUrl = _uploadedPhotoUrl;
 
                 double totalCost = 0;
-                if (masterIngredientList != null)
+                foreach (var entreeComponent in EntreeComponents)
                 {
-                    foreach (var entreeComponent in EntreeComponents)
+                    var masterIngredient = _masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
+                    if (masterIngredient != null)
                     {
-                        var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
-                        if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
+                        if (!string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
                         {
                             totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
+                        }
+                    }
+                    else
+                    {
+                        var masterRecipe = _masterRecipeList.FirstOrDefault(r => r.Id == entreeComponent.ComponentId);
+                        if (masterRecipe != null)
+                        {
+                            if (!string.IsNullOrEmpty(masterRecipe.YieldUnit) && !string.IsNullOrEmpty(entreeComponent.Unit))
+                            {
+                                totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterRecipe.Yield, masterRecipe.YieldUnit, masterRecipe.FoodCost);
+                            }
                         }
                     }
                 }
@@ -295,43 +320,72 @@ namespace Freecost
             }
         }
 
-        private async Task LoadMasterIngredients()
+        private async Task LoadAvailableComponents()
         {
             if (SessionService.IsOffline)
             {
-                masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>();
+                _masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
+                _masterRecipeList = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
             }
             else
             {
                 db = FirestoreService.Db;
                 if (db == null || restaurantId == null) return;
-                var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-                var snapshot = await ingredientsCollection.GetSnapshotAsync();
-                masterIngredientList = snapshot.Documents.Select(doc => {
+
+                var ingredientsTask = db.Collection("restaurants").Document(restaurantId).Collection("ingredients").GetSnapshotAsync();
+                var recipesTask = db.Collection("recipes").WhereEqualTo("RestaurantId", restaurantId).GetSnapshotAsync();
+
+                await Task.WhenAll(ingredientsTask, recipesTask);
+
+                _masterIngredientList = ingredientsTask.Result.Documents.Select(doc => {
                     var ing = doc.ConvertTo<IngredientCsvRecord>();
                     ing.Id = doc.Id;
                     return ing;
                 }).ToList();
+
+                _masterRecipeList = recipesTask.Result.Documents.Select(doc => {
+                    var rec = doc.ConvertTo<Recipe>();
+                    rec.Id = doc.Id;
+                    return rec;
+                }).ToList();
             }
 
-            if (masterIngredientList == null) return;
-            var displayList = masterIngredientList.Select(ing => new EntreeComponentDisplay
+            var displayList = new List<EntreeComponentDisplay>();
+
+            if (_masterIngredientList != null)
             {
-                DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : ing.ItemName ?? string.Empty,
-                OriginalIngredient = ing
-            }).OrderBy(d => d.DisplayName).ToList();
-            ComponentPicker.ItemsSource = displayList;
+                displayList.AddRange(_masterIngredientList.Select(ing => new EntreeComponentDisplay
+                {
+                    DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : (ing.ItemName ?? string.Empty),
+                    Id = ing.Id ?? string.Empty,
+                    Unit = ing.Unit ?? string.Empty,
+                    ItemType = "Ingredient"
+                }));
+            }
+
+            if (_masterRecipeList != null)
+            {
+                displayList.AddRange(_masterRecipeList.Select(rec => new EntreeComponentDisplay
+                {
+                    DisplayName = rec.Name ?? string.Empty,
+                    Id = rec.Id ?? string.Empty,
+                    Unit = rec.YieldUnit ?? string.Empty,
+                    ItemType = "Recipe"
+                }));
+            }
+
+            ComponentPicker.ItemsSource = displayList.OrderBy(d => d.DisplayName).ToList();
             ComponentPicker.ItemDisplayBinding = new Binding("DisplayName");
         }
+
 
         private void OnComponentPicker_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (ComponentPicker.SelectedItem is EntreeComponentDisplay selectedComponentDisplay)
             {
-                var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
-                if (selectedMasterIngredient != null && !string.IsNullOrEmpty(selectedMasterIngredient.Unit))
+                if (!string.IsNullOrEmpty(selectedComponentDisplay.Unit))
                 {
-                    string? category = UnitConverter.GetCategoryForUnit(selectedMasterIngredient.Unit);
+                    string? category = UnitConverter.GetCategoryForUnit(selectedComponentDisplay.Unit);
                     if (category != null)
                     {
                         UnitPicker.ItemsSource = UnitConverter.GetUnitsForCategory(category);
@@ -351,12 +405,12 @@ namespace Freecost
             }
 
             var selectedComponentDisplay = ComponentPicker.SelectedItem as EntreeComponentDisplay;
-            if (selectedComponentDisplay?.OriginalIngredient == null) return;
-            var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
+            if (selectedComponentDisplay == null) return;
+
             var componentToAdd = new EntreeComponent
             {
-                ComponentId = selectedMasterIngredient.Id,
-                Name = !string.IsNullOrEmpty(selectedMasterIngredient.AliasName) ? selectedMasterIngredient.AliasName : selectedMasterIngredient.ItemName ?? string.Empty,
+                ComponentId = selectedComponentDisplay.Id,
+                Name = selectedComponentDisplay.DisplayName,
                 Quantity = quantity,
                 Unit = UnitPicker.SelectedItem.ToString(),
                 DisplayQuantity = double.TryParse(DisplayQuantityEntry.Text, out double displayQuantity) ? displayQuantity : quantity,
@@ -390,7 +444,7 @@ namespace Freecost
                 return;
             }
             var componentToEdit = SelectedComponent;
-            var componentDisplay = ComponentPicker.ItemsSource.Cast<EntreeComponentDisplay>().FirstOrDefault(i => i.OriginalIngredient?.Id == componentToEdit.ComponentId);
+            var componentDisplay = ComponentPicker.ItemsSource.Cast<EntreeComponentDisplay>().FirstOrDefault(i => i.Id == componentToEdit.ComponentId);
             if (componentDisplay != null) ComponentPicker.SelectedItem = componentDisplay;
             QuantityEntry.Text = componentToEdit.Quantity.ToString();
             UnitPicker.SelectedItem = componentToEdit.Unit;

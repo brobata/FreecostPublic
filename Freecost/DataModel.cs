@@ -178,7 +178,16 @@ namespace Freecost
     public class EntreeComponentDisplay
     {
         public string? DisplayName { get; set; }
-        public IngredientCsvRecord? OriginalIngredient { get; set; }
+        public string Id { get; set; }
+        public string Unit { get; set; }
+        public string ItemType { get; set; } // "Ingredient" or "Recipe"
+
+        public EntreeComponentDisplay()
+        {
+            Id = string.Empty;
+            Unit = string.Empty;
+            ItemType = string.Empty;
+        }
     }
 
     [FirestoreData]

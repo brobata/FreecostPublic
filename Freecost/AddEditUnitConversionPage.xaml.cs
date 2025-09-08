@@ -10,65 +10,87 @@ namespace Freecost
 
         public AddEditUnitConversionPage(UnitConversion? conversion = null)
         {
-            InitializeComponent();
-            if (conversion != null)
+            try
             {
-                _conversion = conversion;
-                UnitNameEntry.Text = _conversion.UnitName;
-                CategoryEntry.Text = _conversion.Category;
-                ToBaseFactorEntry.Text = _conversion.ToBaseFactor.ToString();
+                InitializeComponent();
+                if (conversion != null)
+                {
+                    _conversion = conversion;
+                    UnitNameEntry.Text = _conversion.UnitName;
+                    CategoryEntry.Text = _conversion.Category;
+                    ToBaseFactorEntry.Text = _conversion.ToBaseFactor.ToString();
+                }
+                else
+                {
+                    _conversion = new UnitConversion();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _conversion = new UnitConversion();
+                DisplayExceptionAlert(ex, "Constructor");
             }
         }
 
         private async void OnSaveClicked(object sender, EventArgs e)
         {
-            _conversion.UnitName = UnitNameEntry.Text;
-            _conversion.Category = CategoryEntry.Text;
-            _conversion.ToBaseFactor = Convert.ToDouble(ToBaseFactorEntry.Text);
-
-            if (SessionService.IsOffline)
+            try
             {
-                var conversions = await LocalStorageService.LoadAsync<UnitConversion>();
-                if (string.IsNullOrEmpty(_conversion.Id))
+                _conversion.UnitName = UnitNameEntry.Text;
+                _conversion.Category = CategoryEntry.Text;
+                _conversion.ToBaseFactor = Convert.ToDouble(ToBaseFactorEntry.Text);
+
+                if (SessionService.IsOffline)
                 {
-                    _conversion.Id = Guid.NewGuid().ToString();
-                    conversions.Add(_conversion);
+                    var conversions = await LocalStorageService.LoadAsync<UnitConversion>();
+                    if (string.IsNullOrEmpty(_conversion.Id))
+                    {
+                        _conversion.Id = Guid.NewGuid().ToString();
+                        conversions.Add(_conversion);
+                    }
+                    else
+                    {
+                        var existing = conversions.FirstOrDefault(c => c.Id == _conversion.Id);
+                        if (existing != null)
+                        {
+                            var index = conversions.IndexOf(existing);
+                            conversions[index] = _conversion;
+                        }
+                    }
+                    await LocalStorageService.SaveAsync(conversions);
                 }
                 else
                 {
-                    var existing = conversions.FirstOrDefault(c => c.Id == _conversion.Id);
-                    if (existing != null)
+                    var db = FirestoreService.Db;
+                    if (db == null) return;
+                    if (string.IsNullOrEmpty(_conversion.Id))
                     {
-                        var index = conversions.IndexOf(existing);
-                        conversions[index] = _conversion;
+                        await db.Collection("unitConversions").AddAsync(_conversion);
+                    }
+                    else
+                    {
+                        await db.Collection("unitConversions").Document(_conversion.Id).SetAsync(_conversion);
                     }
                 }
-                await LocalStorageService.SaveAsync(conversions);
-            }
-            else
-            {
-                var db = FirestoreService.Db;
-                if (db == null) return;
-                if (string.IsNullOrEmpty(_conversion.Id))
-                {
-                    await db.Collection("unitConversions").AddAsync(_conversion);
-                }
-                else
-                {
-                    await db.Collection("unitConversions").Document(_conversion.Id).SetAsync(_conversion);
-                }
-            }
 
-            await Navigation.PopAsync();
+                await Navigation.PopAsync();
+            }
+            catch (Exception ex)
+            {
+                await DisplayExceptionAlert(ex, "OnSaveClicked");
+            }
         }
 
         private async void OnCancelClicked(object sender, EventArgs e)
         {
             await Navigation.PopAsync();
+        }
+
+        private async Task DisplayExceptionAlert(Exception ex, string location)
+        {
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlert("Crash Report", $"An error occurred in {location}:\n\n{ex.Message}\n\n{ex.StackTrace}", "OK");
+            }
         }
     }
 }

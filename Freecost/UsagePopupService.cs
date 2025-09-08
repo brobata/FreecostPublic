@@ -12,6 +12,12 @@ namespace Freecost
 
         public static async Task CheckAndShowPopupAsync()
         {
+            // Do not show the popup if the user is logged in
+            if (SessionService.IsLoggedIn)
+            {
+                return;
+            }
+
             // Get the current open count, increment it, and save it back.
             int openCount = Preferences.Get(AppOpenCountKey, 0);
             openCount++;

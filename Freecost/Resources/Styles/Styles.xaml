@@ -19,6 +19,7 @@
         <Setter Property="BackgroundColor" Value="{StaticResource PageBackgroundColor}" />
     </Style>
 
+
     <Style TargetType="Shell" ApplyToDerivedTypes="True">
         <Setter Property="Shell.BackgroundColor" Value="{StaticResource Secondary}" />
         <Setter Property="Shell.ForegroundColor" Value="{StaticResource White}" />
@@ -27,7 +28,8 @@
         <Setter Property="Shell.UnselectedColor" Value="{StaticResource Gray200}" />
         <Setter Property="Shell.NavBarHasShadow" Value="True" />
         <Setter Property="Shell.TabBarBackgroundColor" Value="{StaticResource CardBackgroundColor}" />
-        <Setter Property="Shell.TabBarForegroundColor" Value="{StaticResource Tertiary}" />
+        <Setter Property="Shell.TabBarForegroundColor" Value="{StaticResource Tertiary}" 
+ />
         <Setter Property="Shell.TabBarTitleColor" Value="{StaticResource Tertiary}" />
         <Setter Property="Shell.TabBarUnselectedColor" Value="{StaticResource Gray500}" />
     </Style>
@@ -39,24 +41,29 @@
         <Setter Property="FontSize" Value="16"/>
         <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="Padding" Value="24,14"/>
+
         <Setter Property="MinimumHeightRequest" Value="50"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
                     <VisualState x:Name="Normal" />
                     <VisualState x:Name="Disabled">
+
                         <VisualState.Setters>
                             <Setter Property="BackgroundColor" Value="{StaticResource Gray300}" />
                         </VisualState.Setters>
                     </VisualState>
+
                     <VisualState x:Name="PointerOver">
                         <VisualState.Setters>
                             <Setter Property="BackgroundColor" Value="{StaticResource Gray900}" />
                         </VisualState.Setters>
+
                     </VisualState>
                     <VisualState x:Name="Pressed">
                         <VisualState.Setters>
                             <Setter Property="BackgroundColor" Value="{StaticResource Gray950}" />
+
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>
@@ -66,7 +73,8 @@
 
     <Style x:Key="DeleteButtonStyle" TargetType="Button">
         <Setter Property="TextColor" Value="{StaticResource White}" />
-        <Setter Property="BackgroundColor" Value="{StaticResource DeleteButtonColor}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource DeleteButtonColor}" 
+ />
         <Setter Property="FontFamily" Value="OpenSansSemibold"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="CornerRadius" Value="0"/>
@@ -75,24 +83,29 @@
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
+
                     <VisualState x:Name="Normal" />
                     <VisualState x:Name="Disabled">
                         <VisualState.Setters>
                             <Setter Property="BackgroundColor" Value="{StaticResource Gray300}" />
+
                         </VisualState.Setters>
                     </VisualState>
                     <VisualState x:Name="PointerOver">
                         <VisualState.Setters>
+
                             <Setter Property="BackgroundColor" Value="#B71C1C" />
                         </VisualState.Setters>
                     </VisualState>
                     <VisualState x:Name="Pressed">
                         <VisualState.Setters>
+
                             <Setter Property="BackgroundColor" Value="#C62828" />
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>
             </VisualStateGroupList>
+
         </Setter>
     </Style>
 
@@ -102,10 +115,18 @@
         <Setter Property="HorizontalTextAlignment" Value="Start" />
     </Style>
 
+    <Style x:Key="ListHeaderLabel" TargetType="Label">
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+        <Setter Property="HorizontalTextAlignment" Value="Start" />
+    </Style>
+
     <Style x:Key="ChipStyle" TargetType="Button">
         <Setter Property="BackgroundColor" Value="{StaticResource Secondary}" />
         <Setter Property="TextColor" Value="{StaticResource PrimaryTextColor}" />
         <Setter Property="CornerRadius" Value="14" />
+
         <Setter Property="HeightRequest" Value="28" />
         <Setter Property="Padding" Value="12,0" />
         <Setter Property="FontSize" Value="12" />
@@ -117,6 +138,7 @@
         <Setter Property="FontFamily" Value="OpenSansSemibold"/>
         <Setter Property="FontSize" Value="16"/>
         <Setter Property="CornerRadius" Value="0"/>
+
         <Setter Property="Padding" Value="24,14"/>
         <Setter Property="MinimumHeightRequest" Value="50"/>
     </Style>
@@ -128,21 +150,25 @@
         <Setter Property="MinimumHeightRequest" Value="50"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
-                <VisualStateGroup x:Name="CommonStates">
+                <VisualStateGroup 
+ x:Name="CommonStates">
                     <VisualState x:Name="Normal" />
                     <VisualState x:Name="Disabled">
                         <VisualState.Setters>
                             <Setter Property="Opacity" Value="0.5" />
+
                         </VisualState.Setters>
                     </VisualState>
                     <VisualState x:Name="PointerOver">
                         <VisualState.Setters>
+
                             <Setter Property="BackgroundColor" Value="{StaticResource Gray900}" />
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>
             </VisualStateGroupList>
         </Setter>
+
     </Style>
 
     <Style TargetType="SearchBar">
@@ -153,10 +179,12 @@
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
+
                     <VisualState x:Name="Normal" />
                     <VisualState x:Name="Disabled">
                         <VisualState.Setters>
                             <Setter Property="BackgroundColor" Value="{StaticResource Gray200}" />
+
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>
@@ -166,6 +194,7 @@
 
     <Style TargetType="Entry">
         <Setter Property="TextColor" Value="{StaticResource PrimaryTextColor}" />
+
         <Setter Property="BackgroundColor" Value="{StaticResource CardBackgroundColor}" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14" />
@@ -177,6 +206,7 @@
         <Setter Property="TextColor" Value="{StaticResource PrimaryTextColor}" />
         <Setter Property="BackgroundColor" Value="{StaticResource CardBackgroundColor}" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
+
         <Setter Property="FontSize" Value="14" />
         <Setter Property="PlaceholderColor" Value="{StaticResource SecondaryTextColor}" />
         <Setter Property="MinimumHeightRequest" Value="100"/>
@@ -188,7 +218,8 @@
         <Setter Property="BackgroundColor" Value="{StaticResource CardBackgroundColor}" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="MinimumHeightRequest" Value="50"/>
+        <Setter Property="MinimumHeightRequest" 
+ Value="50"/>
     </Style>
 
     <Style TargetType="Label">
@@ -202,6 +233,7 @@
         <Setter Property="FontFamily" Value="OpenSansSemibold"/>
         <Setter Property="TextColor" Value="{StaticResource Tertiary}"/>
         <Setter Property="HorizontalOptions" Value="Center" />
+
     </Style>
 
     <Style x:Key="SubHeadline" TargetType="Label">
@@ -215,6 +247,7 @@
         <Setter Property="HasShadow" Value="True" />
         <Setter Property="BorderColor" Value="{StaticResource BorderColor}" />
         <Setter Property="CornerRadius" Value="0" />
+
         <Setter Property="Padding" Value="0"/>
         <Setter Property="BackgroundColor" Value="{StaticResource CardBackgroundColor}" />
     </Style>
@@ -229,6 +262,7 @@
 
     <Style TargetType="ActivityIndicator">
         <Setter Property="Color" Value="{StaticResource Primary}" />
+
     </Style>
 
 </ResourceDictionary>

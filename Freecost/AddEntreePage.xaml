@@ -10,155 +10,206 @@
 
                 <VerticalStackLayout Grid.Column="0" Spacing="15">
 
+
                     <Frame>
                         <VerticalStackLayout Spacing="10" Padding="10">
                             <Label Text="Entree Details" Style="{StaticResource SubHeadline}" HorizontalOptions="Start" />
 
-                            <Border Style="{StaticResource Border}">
+
+                            <Border>
                                 <VerticalStackLayout Padding="5">
                                     <Label Text="Entree Name" />
+
                                     <Entry x:Name="EntreeNameEntry" Placeholder="e.g., Classic Burger" ToolTipProperties.Text="The name of the entree as it appears on the menu."/>
                                 </VerticalStackLayout>
                             </Border>
 
+
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                                <Border Grid.Column="0" Style="{StaticResource Border}">
+                                <Border Grid.Column="0">
                                     <VerticalStackLayout Padding="5">
+
                                         <Label Text="Yield Quantity" />
                                         <Entry x:Name="YieldEntry" Keyboard="Numeric" Placeholder="e.g., 1" TextChanged="OnYieldChanged" ToolTipProperties.Text="How many portions this entree preparation yields."/>
+
                                     </VerticalStackLayout>
                                 </Border>
-                                <Border Grid.Column="1" Style="{StaticResource Border}">
+                                <Border Grid.Column="1">
+
                                     <Grid ColumnDefinitions="*, Auto">
                                         <Picker Grid.Column="0" x:Name="YieldUnitPicker" Title="Yield Unit of Measure" VerticalOptions="Center" BackgroundColor="Transparent" SelectedIndexChanged="OnYieldChanged" ToolTipProperties.Text="The unit of measure for the entree's yield (e.g., each, portion)."/>
+
                                         <Label Grid.Column="1" Text="▼" FontSize="12" 
                                                TextColor="{StaticResource SecondaryTextColor}" VerticalOptions="Center" HorizontalOptions="Center" Margin="0,0,10,0" InputTransparent="True"/>
+
                                     </Grid>
                                 </Border>
                             </Grid>
-                            <Border Style="{StaticResource Border}">
+
+                            <Border>
                                 <VerticalStackLayout Padding="5">
                                     <Label Text="Plate Price" />
+
                                     <Entry x:Name="PlatePriceEntry" Keyboard="Numeric" Placeholder="22.95" TextChanged="OnYieldChanged" ToolTipProperties.Text="The price of the entree on the menu."/>
                                 </VerticalStackLayout>
                             </Border>
 
+
                             <Border Padding="10" Margin="0,10,0,0">
                                 <VerticalStackLayout Spacing="5">
                                     <Label Text="Costing Summary" FontAttributes="Bold" />
+
                                     <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto" ColumnSpacing="10">
                                         <Label Grid.Row="0" Grid.Column="0" Text="Total Plate Cost:" />
+
                                         <Label Grid.Row="0" Grid.Column="1" x:Name="TotalCostLabel" Text="$0.00" />
                                         <Label Grid.Row="1" Grid.Column="0" Text="Food Cost %:" />
+
                                         <Label Grid.Row="1" Grid.Column="1" x:Name="FoodCostPercentageLabel" Text="0.00%" />
                                     </Grid>
                                 </VerticalStackLayout>
+
                             </Border>
                         </VerticalStackLayout>
                     </Frame>
                     <Frame>
                         <VerticalStackLayout Spacing="10" Padding="10">
+
                             <Label Text="Allergens / Dietary Concerns" Style="{StaticResource SubHeadline}" HorizontalOptions="Start"/>
                             <FlexLayout x:Name="AllergensLayout" Wrap="Wrap" AlignItems="Start" JustifyContent="Start" />
                         </VerticalStackLayout>
+
                     </Frame>
                     <Frame>
                         <VerticalStackLayout Spacing="10" Padding="10">
                             <Grid ColumnDefinitions="*, Auto">
+
                                 <Label Grid.Column="0" Text="Image" Style="{StaticResource SubHeadline}" HorizontalOptions="Start" VerticalOptions="Center"/>
                                 <Button Grid.Column="1" Text="Upload Image" Clicked="OnUploadImageClicked" HorizontalOptions="End" VerticalOptions="Center"/>
                             </Grid>
+
                             <Border Stroke="{StaticResource BorderColor}" StrokeThickness="1" Padding="2" HeightRequest="200" HorizontalOptions="Center">
                                 <Image x:Name="PreviewImage" Aspect="AspectFit" />
                             </Border>
+
                         </VerticalStackLayout>
                     </Frame>
                 </VerticalStackLayout>
 
                 <VerticalStackLayout Grid.Column="1" Spacing="15">
                     <Frame>
+
                         <VerticalStackLayout Spacing="10" Padding="10">
                             <Grid ColumnDefinitions="*, Auto">
                                 <Label Grid.Column="0" Text="Ingredients" Style="{StaticResource SubHeadline}" HorizontalOptions="Start" VerticalOptions="Center"/>
+
                                 <HorizontalStackLayout Grid.Column="1" Spacing="5" HorizontalOptions="End">
                                     <Button Text="Edit Selected" Clicked="OnEditComponentClicked" />
                                     <Button Text="Delete Selected" Clicked="OnDeleteComponentClicked" Style="{StaticResource DeleteButtonStyle}" />
+
                                 </HorizontalStackLayout>
                             </Grid>
                             <CollectionView x:Name="ComponentsCollection" SelectionMode="Single" SelectionChanged="OnComponentSelectionChanged" HeightRequest="200">
+
                                 <CollectionView.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Padding="10" ColumnDefinitions="Auto,Auto,*">
+
                                             <Grid.GestureRecognizers>
                                                 <TapGestureRecognizer Tapped="OnComponentDoubleTapped" NumberOfTapsRequired="2" CommandParameter="{Binding .}" />
+
                                             </Grid.GestureRecognizers>
                                             <VisualStateManager.VisualStateGroups>
+
                                                 <VisualStateGroup Name="CommonStates">
                                                     <VisualState Name="Normal" />
+
                                                     <VisualState Name="Selected">
                                                         <VisualState.Setters>
+
                                                             <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+
                                                         </VisualState.Setters>
                                                     </VisualState>
+
                                                 </VisualStateGroup>
                                             </VisualStateManager.VisualStateGroups>
+
                                             <Label Grid.Column="0" Text="{Binding Quantity}" Margin="0,0,5,0"/>
                                             <Label Grid.Column="1" Text="{Binding Unit}" Margin="0,0,10,0"/>
+
                                             <Label Grid.Column="2" Text="{Binding Name}" />
                                         </Grid>
                                     </DataTemplate>
+
                                 </CollectionView.ItemTemplate>
                             </CollectionView>
 
                             <Grid ColumnSpacing="10" RowSpacing="5">
+
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
+
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="110" />
+
                                     <ColumnDefinition Width="130" />
                                     <ColumnDefinition Width="Auto" />
+
                                 </Grid.ColumnDefinitions>
 
                                 <Label Grid.Row="0" Grid.Column="0" Text="Ingredient"/>
                                 <Label Grid.Row="0" Grid.Column="1" Text="Costing Quantity"/>
+
                                 <Label Grid.Row="0" Grid.Column="2" Text="Costing Unit"/>
 
-                                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource Border}">
+                                <Border Grid.Row="1" Grid.Column="0">
                                     <Picker x:Name="ComponentPicker" Title="Select Ingredient" SelectedIndexChanged="OnComponentPicker_SelectedIndexChanged" ToolTipProperties.Text="Select a component from your master list of ingredients and recipes."/>
+
                                 </Border>
-                                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource Border}">
+                                <Border Grid.Row="1" Grid.Column="1">
+
                                     <Entry x:Name="QuantityEntry" Keyboard="Numeric" Placeholder="Qty" 
                                            HorizontalTextAlignment="Start" VerticalTextAlignment="Center" ToolTipProperties.Text="The quantity of the component used for costing."/>
                                 </Border>
-                                <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource Border}">
+
+                                <Border Grid.Row="1" Grid.Column="2">
                                     <Picker x:Name="UnitPicker" Title="Unit" ToolTipProperties.Text="The unit of measure for the costing quantity."/>
+
                                 </Border>
 
                                 <Label Grid.Row="2" Grid.Column="1" Text="Display Quantity"/>
                                 <Label Grid.Row="2" Grid.Column="2" Text="Display Unit"/>
 
-                                <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource Border}">
+
+                                <Border Grid.Row="3" Grid.Column="1">
                                     <Entry x:Name="DisplayQuantityEntry" Keyboard="Numeric" Placeholder="Qty" HorizontalTextAlignment="Start" VerticalTextAlignment="Center" ToolTipProperties.Text="The quantity to display on the prep sheet (can be different from costing quantity)."/>
                                 </Border>
-                                <Border Grid.Row="3" Grid.Column="2" Style="{StaticResource Border}">
+
+                                <Border Grid.Row="3" Grid.Column="2">
                                     <Picker x:Name="DisplayUnitPicker" Title="Unit" ToolTipProperties.Text="The unit of measure to display on the prep sheet."/>
+
                                 </Border>
 
                                 <Button Grid.Row="3" Grid.Column="3" Text="Add" Clicked="OnAddComponentClicked" VerticalOptions="End" Style="{StaticResource EdgyButtonStyle}" />
                             </Grid>
 
+
                         </VerticalStackLayout>
                     </Frame>
                     <Frame VerticalOptions="Fill">
                         <VerticalStackLayout Spacing="10" Padding="10">
+
                             <Label Text="Directions" Style="{StaticResource SubHeadline}" HorizontalOptions="Start"/>
                             <Editor x:Name="DirectionsEditor" HeightRequest="150" ToolTipProperties.Text="Enter the step-by-step instructions for preparing the entree."/>
                             <Button Text="Add Step" Clicked="OnAddStepClicked" HorizontalOptions="Start" Style="{StaticResource EdgyButtonStyle}"/>
+
                         </VerticalStackLayout>
                     </Frame>
                 </VerticalStackLayout>
@@ -167,7 +218,8 @@
 
         <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="10">
             <Button Grid.Column="0" Text="Save" Clicked="OnSaveClicked" Style="{StaticResource EdgyButtonStyle}" />
-            <Button Grid.Column="1" Text="Cancel" Clicked="OnCancelClicked" Style="{StaticResource EdgyButtonStyle}" />
+            <Button Grid.Column="1" Text="Cancel" 
+ Clicked="OnCancelClicked" Style="{StaticResource EdgyButtonStyle}" />
         </Grid>
     </Grid>
 </ContentPage>

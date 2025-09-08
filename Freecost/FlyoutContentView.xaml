@@ -8,20 +8,15 @@
         <VerticalStackLayout Spacing="5" Padding="20">
             <Label Text="Freecost" FontSize="24" TextColor="White" FontAttributes="Bold"/>
             <Label Text="{Binding CurrentLocationName, StringFormat='Location: {0}'}" TextColor="{StaticResource Gray200}" FontSize="14"/>
+
         </VerticalStackLayout>
 
         <VerticalStackLayout Grid.Row="1" Spacing="0" Padding="0, 10">
-            <Border Style="{StaticResource FlyoutItemStyle}" IsVisible="{Binding IsAdmin}">
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding GoToAdminCommand}"/>
-                </Border.GestureRecognizers>
-                <Label Text="Admin" TextColor="White" FontFamily="OpenSansSemibold" FontSize="16" VerticalOptions="Center"/>
-            </Border>
-
             <Border Style="{StaticResource FlyoutItemStyle}" IsEnabled="{Binding CanChangeLocation}">
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding ChangeLocationCommand}"/>
                 </Border.GestureRecognizers>
+
                 <Label Text="Change Location" TextColor="White" FontFamily="OpenSansSemibold" FontSize="16" VerticalOptions="Center"/>
             </Border>
 
@@ -29,6 +24,7 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding GoToSettingsCommand}"/>
                 </Border.GestureRecognizers>
+
                 <Label Text="Settings" TextColor="White" FontFamily="OpenSansSemibold" FontSize="16" VerticalOptions="Center"/>
             </Border>
 
@@ -36,6 +32,7 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding ExitCommand}"/>
                 </Border.GestureRecognizers>
+
                 <Label Text="Exit" TextColor="White" FontFamily="OpenSansSemibold" FontSize="16" VerticalOptions="Center"/>
             </Border>
         </VerticalStackLayout>
@@ -43,7 +40,8 @@
         <VerticalStackLayout Grid.Row="2" Spacing="10" Padding="20">
             <Label Text="{Binding CurrentLocationName, StringFormat='Location: {0}'}" TextColor="{StaticResource Gray200}" FontSize="12" HorizontalOptions="Center"/>
             <Label Text="{Binding StatusText}" TextColor="{StaticResource Gray200}" FontSize="12" HorizontalOptions="Center"/>
-            <Button Text="Login" IsVisible="{Binding IsNotLoggedIn}" Command="{Binding LoginCommand}" BackgroundColor="{StaticResource Accent}" TextColor="White" Style="{StaticResource EdgyButtonStyle}"/>
+            <Button Text="Login" IsVisible="{Binding IsNotLoggedIn}" 
+ Command="{Binding LoginCommand}" BackgroundColor="{StaticResource Accent}" TextColor="White" Style="{StaticResource EdgyButtonStyle}"/>
             <Button Text="Logout" IsVisible="{Binding IsLoggedIn}" Command="{Binding LogoutCommand}" Style="{StaticResource EdgyButtonStyle}"/>
         </VerticalStackLayout>
     </Grid>

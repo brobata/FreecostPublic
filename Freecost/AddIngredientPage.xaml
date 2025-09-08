@@ -7,72 +7,89 @@
     <ScrollView>
         <VerticalStackLayout Spacing="10" Padding="20">
             <Frame Padding="10" CornerRadius="5" BorderColor="Gray">
+
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Ingredient Details" FontAttributes="Bold" FontSize="Medium" />
 
-                    <Border Style="{StaticResource Border}">
+                    <Border>
                         <VerticalStackLayout Padding="5">
+
                             <Label Text="Supplier Name" />
                             <Entry x:Name="SupplierNameEntry" Placeholder="ex: Sysco" ToolTipProperties.Text="The name of the supplier for this ingredient."/>
                         </VerticalStackLayout>
                     </Border>
 
-                    <Border Style="{StaticResource Border}">
+
+                    <Border>
                         <VerticalStackLayout Padding="5">
                             <Label Text="Item Name" />
-                            <Entry x:Name="ItemNameEntry" Placeholder="ex: Chicken Breast" ToolTipProperties.Text="The official name of the ingredient from the supplier."/>
+                            <Entry x:Name="ItemNameEntry" Placeholder="ex: Chicken Breast" 
+ ToolTipProperties.Text="The official name of the ingredient from the supplier."/>
                         </VerticalStackLayout>
                     </Border>
 
-                    <Border Style="{StaticResource Border}">
+                    <Border>
                         <VerticalStackLayout Padding="5">
+
                             <Label Text="Alias Name" />
                             <Entry x:Name="AliasNameEntry" Placeholder="ex: Chicken" ToolTipProperties.Text="A shorter, more recognizable name for the ingredient to be used in recipes."/>
                         </VerticalStackLayout>
+
                     </Border>
 
-                    <Border Style="{StaticResource Border}">
+                    <Border>
                         <VerticalStackLayout Padding="5">
                             <Label Text="SKU" />
+
                             <Entry x:Name="SKUEntry" Placeholder="ex: 12345" ToolTipProperties.Text="The Stock Keeping Unit or item number for the ingredient."/>
                         </VerticalStackLayout>
                     </Border>
 
-                    <Border Style="{StaticResource Border}">
+
+                    <Border>
                         <VerticalStackLayout Padding="5">
                             <Label Text="Case Price" />
                             <Entry x:Name="CasePriceEntry" Keyboard="Numeric" Placeholder="ex: 50.00" ToolTipProperties.Text="The price for a full case of the ingredient."/>
+
                         </VerticalStackLayout>
                     </Border>
 
-                    <Border Style="{StaticResource Border}">
+                    <Border>
                         <VerticalStackLayout Padding="5">
+
                             <Label Text="Case Quantity" />
                             <Entry x:Name="CaseQuantityEntry" Keyboard="Numeric" Placeholder="ex: 10" ToolTipProperties.Text="The total quantity of the ingredient in a single case."/>
                         </VerticalStackLayout>
+
                     </Border>
 
                     <Label Text="Unit" />
-                    <Border Style="{StaticResource Border}">
+                    <Border>
                         <Grid ColumnDefinitions="*, Auto">
+
                             <Picker Grid.Column="0" x:Name="UnitPicker" 
                                     Title="Choose one"
                                     VerticalOptions="Center" BackgroundColor="Transparent" ToolTipProperties.Text="The unit of measure for the case quantity (e.g., lbs, kg, gallons)."/>
+
                             <Label
                                 Grid.Column="1"
                                 Text="▼"
-                                FontSize="12"
+              
+                                   FontSize="12"
                                 TextColor="{StaticResource SecondaryTextColor}"
                                 VerticalOptions="Center"
-                                HorizontalOptions="Center"
+                 
+                                   HorizontalOptions="Center"
                                 Margin="0,0,10,0"
                                 InputTransparent="True"/>
+
                         </Grid>
                     </Border>
                 </VerticalStackLayout>
             </Frame>
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                 <Button Grid.Column="0" Text="Save" Clicked="OnSaveClicked" />
+
                 <Button Grid.Column="1" Text="Cancel" Clicked="OnCancelClicked" />
             </Grid>
         </VerticalStackLayout>
