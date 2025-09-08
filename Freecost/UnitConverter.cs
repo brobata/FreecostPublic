@@ -20,7 +20,7 @@ namespace Freecost
     public static class UnitConverter
     {
         private static readonly List<UnitConversion> _conversions;
-        private static readonly List<string> displayUnits = new List<string> { "g", "kg", "oz", "lb", "ml", "l", "fl oz", "cup", "pt", "qt", "gal", "ea", "dz" };
+        private static readonly List<string> displayUnits = new List<string> { "g", "kg", "oz", "lb", "ml", "l", "fl oz", "cup", "pt", "qt", "gal", "ea", "dz", "#AVG" };
 
         static UnitConverter()
         {
@@ -35,6 +35,7 @@ namespace Freecost
                 new UnitConversion { UnitName = "pound", Category = "Weight", ToBaseFactor = 453.592 },
                 new UnitConversion { UnitName = "lb", Category = "Weight", ToBaseFactor = 453.592 },
                 new UnitConversion { UnitName = "lbs", Category = "Weight", ToBaseFactor = 453.592 },
+                new UnitConversion { UnitName = "#AVG", Category = "Weight", ToBaseFactor = 453.592 },
                 new UnitConversion { UnitName = "milliliter", Category = "Volume", ToBaseFactor = 1 },
                 new UnitConversion { UnitName = "ml", Category = "Volume", ToBaseFactor = 1 },
                 new UnitConversion { UnitName = "liter", Category = "Volume", ToBaseFactor = 1000 },

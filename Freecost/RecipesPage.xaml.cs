@@ -11,6 +11,7 @@ namespace Freecost
     {
         private FirestoreDb? db;
         private string? restaurantId;
+        private List<RecipeDisplayRecord> _allRecipes = new List<RecipeDisplayRecord>();
         private RecipeDisplayRecord? _selectedRecipe;
         private string _currentSortColumn = "Name";
         private bool _isSortAscending = true;
@@ -114,15 +115,8 @@ namespace Freecost
                 }).ToList();
                 await LocalStorageService.SaveAsync(recipes.Cast<Recipe>().ToList(), restaurantId);
             }
-
-            var sortedRecipes = _isSortAscending
-                ? recipes.OrderBy(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList()
-                : recipes.OrderByDescending(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList();
-
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                RecipesListView.ItemsSource = sortedRecipes;
-            });
+            _allRecipes = recipes;
+            SortAndFilterRecipes();
         }
 
         private async void OnAddRecipeClicked(object sender, EventArgs e)
@@ -238,8 +232,32 @@ namespace Freecost
                 _currentSortColumn = newSortColumn;
                 _isSortAscending = true;
             }
+            SortAndFilterRecipes();
+        }
+        private void OnSearchBarTextChanged(object sender, TextChangedEventArgs e)
+        {
+            SortAndFilterRecipes();
+        }
 
-            LoadData();
+        private void SortAndFilterRecipes()
+        {
+            var recipes = _allRecipes;
+            var searchBar = this.FindByName("RecipesSearchBar") as SearchBar;
+            var searchTerm = searchBar?.Text;
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                recipes = recipes.Where(r => r.Name != null && r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            var sortedRecipes = _isSortAscending
+                ? recipes.OrderBy(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList()
+                : recipes.OrderByDescending(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList();
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                RecipesListView.ItemsSource = sortedRecipes;
+            });
         }
     }
 }

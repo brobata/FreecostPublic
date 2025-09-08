@@ -72,7 +72,6 @@ namespace Freecost
                 AllergensLayout.Children.Add(chip);
             }
 
-            LoadMasterIngredients();
             LoadUnitDropdowns();
             DirectionsEditor.TextChanged += OnDirectionsEditorTextChanged;
 
@@ -92,13 +91,68 @@ namespace Freecost
             }
         }
 
-        private void OnIngredientTapped(object sender, TappedEventArgs e)
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+            await LoadMasterIngredients();
+            UpdateCostingSummary();
+        }
+
+        private void OnIngredientSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            SelectedIngredient = e.CurrentSelection.FirstOrDefault() as RecipeIngredient;
+        }
+
+        private void OnIngredientDoubleTapped(object sender, TappedEventArgs e)
         {
             if (e.Parameter is RecipeIngredient tappedIngredient)
             {
                 SelectedIngredient = tappedIngredient;
+                OnEditIngredientClicked(sender, e);
             }
         }
+
+        private void OnYieldChanged(object sender, EventArgs e)
+        {
+            UpdateCostingSummary();
+        }
+
+        private async Task UpdateCostingSummary()
+        {
+            if (masterIngredientList == null)
+            {
+                await LoadMasterIngredients();
+            }
+
+            double totalCost = 0;
+            if (masterIngredientList != null)
+            {
+                foreach (var recipeIngredient in RecipeIngredients)
+                {
+                    var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == recipeIngredient.IngredientId);
+                    if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(recipeIngredient.Unit))
+                    {
+                        try
+                        {
+                            totalCost += UnitConverter.Convert(recipeIngredient.Quantity, recipeIngredient.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
+                        }
+                        catch (ArgumentException)
+                        {
+                            // A conversion error might happen if data is inconsistent, ignore for live summary
+                        }
+                    }
+                }
+            }
+
+            TotalCostLabel.Text = totalCost.ToString("C");
+
+            double.TryParse(YieldEntry.Text, out double yield);
+            if (yield == 0) yield = 1;
+
+            double costPerUnit = (yield > 0) ? totalCost / yield : 0;
+            CostPerUnitLabel.Text = $"{costPerUnit:C} per {YieldUnitPicker.SelectedItem ?? "unit"}";
+        }
+
 
         private async void OnUploadImageClicked(object sender, EventArgs e)
         {
@@ -150,10 +204,11 @@ namespace Freecost
         {
             var allUnits = UnitConverter.GetAllUnitNames();
             UnitPicker.ItemsSource = new List<string>(allUnits);
+            DisplayUnitPicker.ItemsSource = new List<string>(allUnits);
             YieldUnitPicker.ItemsSource = new List<string>(allUnits);
         }
 
-        private async void LoadMasterIngredients()
+        private async Task LoadMasterIngredients()
         {
             if (SessionService.IsOffline)
             {
@@ -202,6 +257,12 @@ namespace Freecost
                 return;
             }
 
+            if (UnitPicker.SelectedItem == null)
+            {
+                DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
+                return;
+            }
+
             var selectedIngredientDisplay = IngredientPicker.SelectedItem as IngredientDisplay;
             if (selectedIngredientDisplay?.OriginalIngredient == null) return;
 
@@ -211,13 +272,17 @@ namespace Freecost
                 IngredientId = selectedMasterIngredient.Id,
                 Name = !string.IsNullOrEmpty(selectedMasterIngredient.AliasName) ? selectedMasterIngredient.AliasName : selectedMasterIngredient.ItemName ?? string.Empty,
                 Quantity = quantity,
-                Unit = UnitPicker.SelectedItem?.ToString() ?? string.Empty
+                Unit = UnitPicker.SelectedItem.ToString(),
+                DisplayQuantity = double.TryParse(DisplayQuantityEntry.Text, out double displayQuantity) ? displayQuantity : quantity,
+                DisplayUnit = DisplayUnitPicker.SelectedItem?.ToString() ?? UnitPicker.SelectedItem.ToString()
             };
 
             RecipeIngredients.Add(ingredientToAdd);
             RefreshRecipeGrid();
             QuantityEntry.Text = string.Empty;
+            DisplayQuantityEntry.Text = string.Empty;
             UnitPicker.SelectedIndex = -1;
+            DisplayUnitPicker.SelectedIndex = -1;
             IngredientPicker.Focus();
         }
 
@@ -249,6 +314,8 @@ namespace Freecost
             if (ingredientDisplay != null) IngredientPicker.SelectedItem = ingredientDisplay;
             QuantityEntry.Text = ingredientToEdit.Quantity.ToString();
             UnitPicker.SelectedItem = ingredientToEdit.Unit;
+            DisplayQuantityEntry.Text = ingredientToEdit.DisplayQuantity.ToString();
+            DisplayUnitPicker.SelectedItem = ingredientToEdit.DisplayUnit;
             RecipeIngredients.Remove(ingredientToEdit);
             RefreshRecipeGrid();
         }
@@ -257,6 +324,7 @@ namespace Freecost
         {
             IngredientsCollection.ItemsSource = null;
             IngredientsCollection.ItemsSource = new List<RecipeIngredient>(RecipeIngredients);
+            UpdateCostingSummary();
         }
 
         private void OnAddStepClicked(object sender, EventArgs e)
@@ -286,73 +354,82 @@ namespace Freecost
 
         private async void OnSaveClicked(object sender, EventArgs e)
         {
-            if (RecipeData == null) RecipeData = new Recipe();
-            double.TryParse(YieldEntry.Text, out double yield);
-            if (yield == 0) yield = 1;
-
-            RecipeData.Name = RecipeNameEntry.Text;
-            RecipeData.Yield = yield;
-            RecipeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
-            RecipeData.Directions = DirectionsEditor.Text;
-            RecipeData.Ingredients = RecipeIngredients;
-            RecipeData.RestaurantId = restaurantId;
-            RecipeData.Allergens = Allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
-            RecipeData.PhotoUrl = _uploadedPhotoUrl;
-
-            double totalCost = 0;
-            if (masterIngredientList != null)
+            try
             {
-                foreach (var recipeIngredient in RecipeIngredients)
+                if (RecipeData == null) RecipeData = new Recipe();
+                double.TryParse(YieldEntry.Text, out double yield);
+                if (yield == 0) yield = 1;
+
+                RecipeData.Name = RecipeNameEntry.Text;
+                RecipeData.Yield = yield;
+                RecipeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
+                RecipeData.Directions = DirectionsEditor.Text;
+                RecipeData.Ingredients = RecipeIngredients;
+                RecipeData.RestaurantId = restaurantId;
+                RecipeData.Allergens = Allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
+                RecipeData.PhotoUrl = _uploadedPhotoUrl;
+
+                double totalCost = 0;
+                if (masterIngredientList != null)
                 {
-                    var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == recipeIngredient.IngredientId);
-                    if (masterIngredient != null && masterIngredient.Unit != null)
+                    foreach (var recipeIngredient in RecipeIngredients)
                     {
-                        try
+                        var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == recipeIngredient.IngredientId);
+                        if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(recipeIngredient.Unit))
                         {
-                            totalCost += UnitConverter.Convert(recipeIngredient.Quantity, recipeIngredient.Unit ?? string.Empty, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            await DisplayAlert("Conversion Error", $"Could not convert units for ingredient '{recipeIngredient.Name}': {ex.Message}", "OK");
+                            totalCost += UnitConverter.Convert(recipeIngredient.Quantity, recipeIngredient.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
                         }
                     }
                 }
-            }
 
-            RecipeData.FoodCost = totalCost;
-            if (yield > 0) RecipeData.Price = totalCost / yield;
-            else RecipeData.Price = 0;
+                RecipeData.FoodCost = totalCost;
+                if (yield > 0) RecipeData.Price = totalCost / yield;
+                else RecipeData.Price = 0;
 
-            if (SessionService.IsOffline)
-            {
-                // Pass the restaurantId when loading and saving
-                var recipes = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
-                if (string.IsNullOrEmpty(RecipeData.Id))
+                if (SessionService.IsOffline)
                 {
-                    RecipeData.Id = Guid.NewGuid().ToString();
-                    recipes.Add(RecipeData);
+                    var recipes = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
+                    if (string.IsNullOrEmpty(RecipeData.Id))
+                    {
+                        RecipeData.Id = Guid.NewGuid().ToString();
+                        recipes.Add(RecipeData);
+                    }
+                    else
+                    {
+                        var existing = recipes.FirstOrDefault(r => r.Id == RecipeData.Id);
+                        if (existing != null)
+                        {
+                            var index = recipes.IndexOf(existing);
+                            recipes[index] = RecipeData;
+                        }
+                        else
+                        {
+                            recipes.Add(RecipeData);
+                        }
+                    }
+                    await LocalStorageService.SaveAsync(recipes, restaurantId);
                 }
                 else
                 {
-                    var existing = recipes.FirstOrDefault(r => r.Id == RecipeData.Id);
-                    if (existing != null)
+                    db = FirestoreService.Db;
+                    if (db == null || restaurantId == null) return;
+                    var collection = db.Collection("recipes");
+                    if (string.IsNullOrEmpty(RecipeData.Id))
                     {
-                        recipes.Remove(existing);
-                        recipes.Add(RecipeData);
+                        await collection.AddAsync(RecipeData);
+                    }
+                    else
+                    {
+                        await collection.Document(RecipeData.Id).SetAsync(RecipeData, SetOptions.Overwrite);
                     }
                 }
-                await LocalStorageService.SaveAsync(recipes, restaurantId);
-            }
-            else
-            {
-                db = FirestoreService.Db;
-                if (db == null || restaurantId == null) return;
-                var collection = db.Collection("recipes");
-                if (string.IsNullOrEmpty(RecipeData.Id)) await collection.AddAsync(RecipeData);
-                else await collection.Document(RecipeData.Id).SetAsync(RecipeData);
-            }
 
-            await Navigation.PopAsync();
+                await Navigation.PopAsync();
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"An unexpected error occurred while saving: {ex.Message}", "OK");
+            }
         }
 
         private async void OnCancelClicked(object sender, EventArgs e)

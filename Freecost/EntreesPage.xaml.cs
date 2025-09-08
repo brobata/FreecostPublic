@@ -11,6 +11,7 @@ namespace Freecost
     {
         private FirestoreDb? db;
         private string? restaurantId;
+        private List<EntreeDisplayRecord> _allEntrees = new List<EntreeDisplayRecord>();
         private EntreeDisplayRecord? _selectedEntree;
         private string _currentSortColumn = "Name";
         private bool _isSortAscending = true;
@@ -116,15 +117,8 @@ namespace Freecost
                 }).ToList();
                 await LocalStorageService.SaveAsync(entrees.Cast<Entree>().ToList(), restaurantId);
             }
-
-            var sortedEntrees = _isSortAscending
-                ? entrees.OrderBy(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList()
-                : entrees.OrderByDescending(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList();
-
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                EntreesListView.ItemsSource = sortedEntrees;
-            });
+            _allEntrees = entrees;
+            SortAndFilterEntrees();
         }
 
         private async void OnAddEntreeClicked(object sender, EventArgs e)
@@ -237,7 +231,32 @@ namespace Freecost
                 _isSortAscending = true;
             }
 
-            LoadData();
+            SortAndFilterEntrees();
+        }
+        private void OnSearchBarTextChanged(object sender, TextChangedEventArgs e)
+        {
+            SortAndFilterEntrees();
+        }
+
+        private void SortAndFilterEntrees()
+        {
+            var entrees = _allEntrees;
+            var searchBar = this.FindByName("EntreesSearchBar") as SearchBar;
+            var searchTerm = searchBar?.Text;
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                entrees = entrees.Where(e => e.Name != null && e.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            var sortedEntrees = _isSortAscending
+                ? entrees.OrderBy(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList()
+                : entrees.OrderByDescending(p => p.GetType().GetProperty(_currentSortColumn)?.GetValue(p, null)).ToList();
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                EntreesListView.ItemsSource = sortedEntrees;
+            });
         }
     }
 }

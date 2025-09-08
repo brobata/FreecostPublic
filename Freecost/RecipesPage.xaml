@@ -22,6 +22,7 @@
 
         <VerticalStackLayout x:Name="ListPanel" Grid.Column="0" Spacing="10" Padding="10">
             <Label Text="Recipes" Style="{StaticResource Headline}" Margin="0,10,0,5" />
+            <SearchBar x:Name="RecipesSearchBar" Placeholder="Search Recipes" TextChanged="OnSearchBarTextChanged" />
             <HorizontalStackLayout HorizontalOptions="Center" Spacing="10" Margin="0,0,0,10">
                 <Button Text="Add" Clicked="OnAddRecipeClicked" Style="{StaticResource EdgyButtonStyle}" />
                 <Button Text="Edit" Clicked="OnEditRecipeClicked" Style="{StaticResource EdgyButtonStyle}" />
@@ -182,9 +183,9 @@
                                                 <Label Grid.Column="0" Padding="5" VerticalOptions="Center">
                                                     <Label.FormattedText>
                                                         <FormattedString>
-                                                            <Span Text="{Binding Quantity, StringFormat='{0:G29}'}"/>
+                                                            <Span Text="{Binding DisplayQuantity, StringFormat='{0:G29}'}"/>
                                                             <Span Text=" "/>
-                                                            <Span Text="{Binding Unit}"/>
+                                                            <Span Text="{Binding DisplayUnit}"/>
                                                         </FormattedString>
                                                     </Label.FormattedText>
                                                 </Label>

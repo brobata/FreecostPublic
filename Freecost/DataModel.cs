@@ -68,6 +68,10 @@ namespace Freecost
         public string? Unit { get; set; }
         [FirestoreProperty]
         public string? IngredientId { get; set; }
+        [FirestoreProperty]
+        public double DisplayQuantity { get; set; }
+        [FirestoreProperty]
+        public string? DisplayUnit { get; set; }
     }
 
     [FirestoreData]
@@ -110,6 +114,10 @@ namespace Freecost
         public string? Unit { get; set; }
         [FirestoreProperty]
         public string? ComponentId { get; set; }
+        [FirestoreProperty]
+        public double DisplayQuantity { get; set; }
+        [FirestoreProperty]
+        public string? DisplayUnit { get; set; }
     }
 
     [FirestoreData]
@@ -162,6 +170,7 @@ namespace Freecost
         public string? Name { get; set; }
     }
 
+    [FirestoreData]
     public class IngredientDisplayRecord : IngredientCsvRecord, INotifyPropertyChanged
     {
         private bool _isSelected;
@@ -188,6 +197,7 @@ namespace Freecost
         }
     }
 
+    [FirestoreData]
     public class RecipeDisplayRecord : Recipe, INotifyPropertyChanged
     {
         private bool _isSelected;
@@ -212,6 +222,7 @@ namespace Freecost
         }
     }
 
+    [FirestoreData]
     public class EntreeDisplayRecord : Entree, INotifyPropertyChanged
     {
         private bool _isSelected;
@@ -244,4 +255,3 @@ namespace Freecost
         public List<ImportMap> ImportMaps { get; set; } = new List<ImportMap>();
     }
 }
-
