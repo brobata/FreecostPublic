@@ -1,14 +1,13 @@
-using Google.Cloud.Firestore;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Maui.Controls;
+using Plugin.Firebase.Firestore;
 
 namespace Freecost
 {
     [QueryProperty(nameof(MapId), "mapId")]
     public partial class AddEditMapPage : ContentPage
     {
-        private FirestoreDb? db;
         private ImportMap? _map;
         private string? _mapId;
 
@@ -28,7 +27,15 @@ namespace Freecost
         public AddEditMapPage()
         {
             InitializeComponent();
-            db = FirestoreService.Db;
+            // Initialize with empty fields for a new map
+            _map = new ImportMap
+            {
+                FieldMappings = new Dictionary<string, string>
+                {
+                    { "ItemName", "" }, { "AliasName", "" }, { "CasePrice", "" }, { "SKU", "" }
+                }
+            };
+            BuildMappingsUI();
         }
 
         private void BuildMappingsUI()
@@ -46,38 +53,22 @@ namespace Freecost
                 MappingsLayout.Children.Add(entry);
             }
         }
+
         private async void LoadMap()
         {
-            if (db == null || string.IsNullOrEmpty(MapId))
-            {
-                // This is a new map, initialize with empty fields and default mappings
-                _map = new ImportMap
-                {
-                    FieldMappings = new Dictionary<string, string>
-                    {
-                        { "ItemName", "" },
-                        { "AliasName", "" },
-                        { "CasePrice", "" },
-                        { "SKU", "" }
-                    }
-                };
-                BuildMappingsUI();
-                return;
-            }
+            if (string.IsNullOrEmpty(MapId)) return;
 
             try
             {
-                var doc = await db.Collection("importMaps").Document(MapId).GetSnapshotAsync();
+                var doc = await CrossFirebase.Current.Firestore.Collection("importMaps").Document(MapId).GetAsync();
                 if (doc.Exists)
                 {
-                    _map = doc.ConvertTo<ImportMap>();
+                    _map = doc.ToObject<ImportMap>();
                     _map.Id = doc.Id;
                     MapNameEntry.Text = _map.MapName;
                     SupplierNameEntry.Text = _map.SupplierName;
                     HeaderRowEntry.Text = _map.HeaderRow.ToString();
-
                     BuildMappingsUI();
-
                     PackColumnEntry.Text = _map.PackColumn;
                     SizeColumnEntry.Text = _map.SizeColumn;
                     UnitColumnEntry.Text = _map.UnitColumn;
@@ -93,16 +84,10 @@ namespace Freecost
 
         private async void OnSaveClicked(object sender, EventArgs e)
         {
-            if (db == null) return;
-
-            if (_map == null)
-            {
-                _map = new ImportMap();
-            }
+            _map ??= new ImportMap();
 
             _map.MapName = MapNameEntry.Text;
             _map.SupplierName = SupplierNameEntry.Text;
-
             if (int.TryParse(HeaderRowEntry.Text, out int headerRow))
             {
                 _map.HeaderRow = headerRow;
@@ -123,18 +108,17 @@ namespace Freecost
             _map.CombinedQuantityUnitColumn = CombinedQuantityUnitColumnEntry.Text;
             _map.SplitCharacter = SplitCharacterEntry.Text;
 
-
             try
             {
+                var collection = CrossFirebase.Current.Firestore.Collection("importMaps");
                 if (string.IsNullOrEmpty(_map.Id))
                 {
-                    await db.Collection("importMaps").AddAsync(_map);
+                    await collection.AddAsync(_map);
                 }
                 else
                 {
-                    await db.Collection("importMaps").Document(_map.Id).SetAsync(_map);
+                    await collection.Document(_map.Id).SetAsync(_map);
                 }
-
                 await Navigation.PopAsync();
             }
             catch (Exception ex)

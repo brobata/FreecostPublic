@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 using System.ComponentModel;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Microsoft.Maui.Controls;
+using Plugin.Firebase.Firestore;
 
 namespace Freecost
 {
@@ -22,20 +24,14 @@ namespace Freecost
         }
         public class AllergenSelection
         {
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
             public bool IsSelected { get; set; }
-
-            public AllergenSelection()
-            {
-                Name = string.Empty;
-            }
         }
 
         public Entree EntreeData { get; private set; }
         public List<EntreeComponent> EntreeComponents { get; private set; }
 
         private string restaurantId;
-        private FirestoreDb? db = FirestoreService.Db;
         private List<IngredientCsvRecord> _masterIngredientList = new List<IngredientCsvRecord>();
         private List<Recipe> _masterRecipeList = new List<Recipe>();
         private List<string> topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
@@ -177,8 +173,6 @@ namespace Freecost
 
         private async void OnUploadImageClicked(object sender, EventArgs e)
         {
-            await AuthService.RefreshAuthTokenIfNeededAsync(); // Added token refresh
-
             try
             {
                 var result = await FilePicker.PickAsync(new PickOptions { PickerTitle = "Please select an image file", FileTypes = FilePickerFileType.Images });
@@ -233,7 +227,7 @@ namespace Freecost
         {
             try
             {
-                if (EntreeData == null) EntreeData = new Entree();
+                EntreeData ??= new Entree();
                 double.TryParse(YieldEntry.Text, out double yield);
                 if (yield == 0) yield = 1;
                 double.TryParse(PlatePriceEntry.Text, out double platePrice);
@@ -271,8 +265,7 @@ namespace Freecost
                     }
                 }
                 EntreeData.FoodCost = totalCost;
-                if (platePrice > 0) EntreeData.Price = totalCost / platePrice;
-                else EntreeData.Price = 0;
+                EntreeData.Price = (platePrice > 0) ? totalCost / platePrice : 0;
 
                 if (SessionService.IsOffline)
                 {
@@ -299,9 +292,7 @@ namespace Freecost
                 }
                 else
                 {
-                    db = FirestoreService.Db;
-                    if (db == null || restaurantId == null) return;
-                    var collection = db.Collection("entrees");
+                    var collection = CrossFirebase.Current.Firestore.Collection("entrees");
                     if (string.IsNullOrEmpty(EntreeData.Id))
                     {
                         await collection.AddAsync(EntreeData);
@@ -322,32 +313,21 @@ namespace Freecost
 
         private async Task LoadAvailableComponents()
         {
+            var currentRestaurantId = SessionService.CurrentRestaurant?.Id;
+            if (string.IsNullOrEmpty(currentRestaurantId)) return;
+
             if (SessionService.IsOffline)
             {
-                _masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
-                _masterRecipeList = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
+                _masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(currentRestaurantId);
+                _masterRecipeList = await LocalStorageService.LoadAsync<Recipe>(currentRestaurantId);
             }
             else
             {
-                db = FirestoreService.Db;
-                if (db == null || restaurantId == null) return;
-
-                var ingredientsTask = db.Collection("restaurants").Document(restaurantId).Collection("ingredients").GetSnapshotAsync();
-                var recipesTask = db.Collection("recipes").WhereEqualTo("RestaurantId", restaurantId).GetSnapshotAsync();
-
+                var ingredientsTask = FirestoreService.GetIngredientsAsync(currentRestaurantId);
+                var recipesTask = FirestoreService.GetRecipesAsync(currentRestaurantId);
                 await Task.WhenAll(ingredientsTask, recipesTask);
-
-                _masterIngredientList = ingredientsTask.Result.Documents.Select(doc => {
-                    var ing = doc.ConvertTo<IngredientCsvRecord>();
-                    ing.Id = doc.Id;
-                    return ing;
-                }).ToList();
-
-                _masterRecipeList = recipesTask.Result.Documents.Select(doc => {
-                    var rec = doc.ConvertTo<Recipe>();
-                    rec.Id = doc.Id;
-                    return rec;
-                }).ToList();
+                _masterIngredientList = ingredientsTask.Result;
+                _masterRecipeList = recipesTask.Result;
             }
 
             var displayList = new List<EntreeComponentDisplay>();
@@ -470,6 +450,15 @@ namespace Freecost
         protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        // This helper class needs to be defined within the page's scope
+        public class EntreeComponentDisplay
+        {
+            public string? DisplayName { get; set; }
+            public string Id { get; set; } = string.Empty;
+            public string Unit { get; set; } = string.Empty;
+            public string ItemType { get; set; } = string.Empty;
         }
     }
 }

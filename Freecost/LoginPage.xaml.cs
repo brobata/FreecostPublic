@@ -1,169 +1,125 @@
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web;
-using Google.Cloud.Firestore;
-using Newtonsoft.Json;
 using System.Linq;
+using System.Threading.Tasks;
+using Plugin.Firebase.Auth;
+using Plugin.Firebase.Firestore;
 
-namespace Freecost;
-
-public partial class LoginPage : ContentPage
+namespace Freecost
 {
-    private const string WebApiKey = "AIzaSyCmS_d7lw9z-mdtNNoz8JafWsI1iprKRM0"; // Make sure your key is here
-    private static readonly HttpClient client = new HttpClient();
-    private FirestoreDb? db;
-
-    public LoginPage()
+    public partial class LoginPage : ContentPage
     {
-        InitializeComponent();
-        db = FirestoreService.Db;
-        LoadCredentials();
-    }
-
-    private void LoadCredentials()
-    {
-        if (Preferences.Get("RememberMe", false))
+        public LoginPage()
         {
-            EmailEntry.Text = Preferences.Get("Email", string.Empty);
-            PasswordEntry.Text = Preferences.Get("Password", string.Empty);
-            RememberMeCheckBox.IsChecked = true;
-        }
-    }
-
-    private async void OnLoginClicked(object sender, EventArgs e)
-    {
-        if (db == null)
-        {
-            await DisplayAlert("Database Error", "Could not connect to the database.", "OK");
-            return;
+            InitializeComponent();
+            LoadCredentials();
         }
 
-        string email = EmailEntry.Text;
-        string password = PasswordEntry.Text;
-        string signInUrl = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={WebApiKey}";
-
-        try
+        private void LoadCredentials()
         {
-            var requestData = new { email = email, password = password, returnSecureToken = true };
-            var jsonContent = JsonConvert.SerializeObject(requestData);
-            var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-            var response = await client.PostAsync(signInUrl, httpContent);
-            var responseJson = await response.Content.ReadAsStringAsync();
-
-            if (response.IsSuccessStatusCode)
+            if (Preferences.Get("RememberMe", false))
             {
-                if (RememberMeCheckBox.IsChecked)
+                EmailEntry.Text = Preferences.Get("Email", string.Empty);
+                PasswordEntry.Text = Preferences.Get("Password", string.Empty);
+                RememberMeCheckBox.IsChecked = true;
+            }
+        }
+
+        private async void OnLoginClicked(object sender, EventArgs e)
+        {
+            string email = EmailEntry.Text;
+            string password = PasswordEntry.Text;
+
+            try
+            {
+                // Use the Firebase Auth SDK to sign in
+                var auth = CrossFirebaseAuth.Current;
+                var result = await auth.SignInWithEmailAndPasswordAsync(email, password);
+                var user = result.User;
+
+                if (user != null)
                 {
-                    Preferences.Set("RememberMe", true);
-                    Preferences.Set("Email", email);
-                    Preferences.Set("Password", password);
-                }
-                else
-                {
-                    Preferences.Remove("RememberMe");
-                    Preferences.Remove("Email");
-                    Preferences.Remove("Password");
-                }
-
-                var authData = JsonConvert.DeserializeObject<dynamic>(responseJson);
-                string? userUid = authData?.localId.ToString();
-                string? idToken = authData?.idToken.ToString();
-                string? refreshToken = authData?.refreshToken.ToString(); // Added
-
-                if (userUid == null)
-                {
-                    await DisplayAlert("Authentication Failed", "Login failed. Could not get user ID.", "OK");
-                    return;
-                }
-
-                DocumentReference userDocRef = db.Collection("users").Document(userUid);
-                DocumentSnapshot userSnapshot = await userDocRef.GetSnapshotAsync();
-
-                if (!userSnapshot.Exists)
-                {
-                    await DisplayAlert("Authorization Failed", "Login successful, but no permission document was found.", "OK");
-                    return;
-                }
-
-                SessionService.UserUid = userUid;
-                SessionService.AuthToken = idToken;
-                SessionService.RefreshToken = refreshToken; // Added
-                SessionService.CurrentUserEmail = email;
-                SessionService.UserRole = userSnapshot.GetValue<string>("role");
-                SessionService.IsOffline = false;
-
-                List<string>? permittedRestaurantIds = userSnapshot.GetValue<List<string>>("Restaurants");
-
-                if (permittedRestaurantIds != null && permittedRestaurantIds.Any())
-                {
-                    var restaurants = new List<Restaurant>();
-                    foreach (var id in permittedRestaurantIds)
+                    if (RememberMeCheckBox.IsChecked)
                     {
-                        DocumentReference docRef = db.Collection("restaurants").Document(id);
-                        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
-                        if (snapshot.Exists)
+                        Preferences.Set("RememberMe", true);
+                        Preferences.Set("Email", email);
+                        Preferences.Set("Password", password);
+                    }
+                    else
+                    {
+                        Preferences.Remove("RememberMe");
+                        Preferences.Remove("Email");
+                        Preferences.Remove("Password");
+                    }
+
+                    // Fetch user permissions from Firestore
+                    var userDocRef = CrossFirebase.Current.Firestore.Collection("users").Document(user.Uid);
+                    var userSnapshot = await userDocRef.GetAsync();
+
+                    if (!userSnapshot.Exists)
+                    {
+                        await DisplayAlert("Authorization Failed", "Login successful, but no permission document was found.", "OK");
+                        return;
+                    }
+
+                    SessionService.UserUid = user.Uid;
+                    SessionService.AuthToken = await user.GetIdTokenAsync(false);
+                    SessionService.CurrentUserEmail = email;
+                    SessionService.UserRole = userSnapshot.GetValue<string>("role");
+                    SessionService.IsOffline = false;
+
+                    var permittedRestaurantIds = userSnapshot.GetValue<List<string>>("Restaurants");
+
+                    if (permittedRestaurantIds != null && permittedRestaurantIds.Any())
+                    {
+                        var restaurants = new List<Restaurant>();
+                        foreach (var id in permittedRestaurantIds)
                         {
-                            var restaurant = snapshot.ConvertTo<Restaurant>();
-                            restaurant.Id = snapshot.Id;
-                            restaurants.Add(restaurant);
+                            var docRef = CrossFirebase.Current.Firestore.Collection("restaurants").Document(id);
+                            var snapshot = await docRef.GetAsync();
+                            if (snapshot.Exists)
+                            {
+                                var restaurant = snapshot.ToObject<Restaurant>();
+                                restaurant.Id = snapshot.Id;
+                                restaurants.Add(restaurant);
+                            }
                         }
-                    }
-                    SessionService.PermittedRestaurants = restaurants;
-                    await LocalStorageService.SaveAsync(restaurants);
+                        SessionService.PermittedRestaurants = restaurants;
+                        await LocalStorageService.SaveAsync(restaurants);
 
-                    if (string.IsNullOrEmpty(SessionService.DefaultRestaurantId))
-                    {
                         SessionService.DefaultRestaurantId = restaurants.FirstOrDefault()?.Id;
+                        SessionService.CurrentRestaurant = restaurants.FirstOrDefault();
+                        SessionService.SaveSession();
+
+                        if (Application.Current != null)
+                            Application.Current.MainPage = new MainShell();
                     }
-
-                    SessionService.CurrentRestaurant = restaurants.FirstOrDefault(r => r.Id == SessionService.DefaultRestaurantId) ?? restaurants.FirstOrDefault();
-                    SessionService.SaveSession();
-
-                    if (Application.Current != null)
-                        Application.Current.MainPage = new MainShell();
+                    else
+                    {
+                        await DisplayAlert("No Locations", "You are not assigned to any locations.", "OK");
+                    }
                 }
-                else
-                {
-                    await DisplayAlert("No Locations", "You are not assigned to any locations.", "OK");
-                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Login Failed", ex.Message, "OK");
+            }
+        }
+
+        private async void OnOfflineClicked(object sender, EventArgs e)
+        {
+            SessionService.StartOfflineSession();
+            var restaurants = await LocalStorageService.LoadAsync<Restaurant>();
+
+            if (restaurants != null && restaurants.Any())
+            {
+                SessionService.PermittedRestaurants = restaurants;
+                if (Application.Current != null) Application.Current.MainPage = new MainShell();
             }
             else
             {
-                await DisplayAlert("Authentication Failed", "Login failed. Please check your email and password.", "OK");
+                if (Application.Current != null) Application.Current.MainPage = new MainShell();
             }
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Error", "An unexpected error occurred: " + ex.Message, "OK");
-        }
-    }
-
-    private async void OnOfflineClicked(object sender, EventArgs e)
-    {
-        SessionService.StartOfflineSession();
-        var restaurants = await LocalStorageService.LoadAsync<Restaurant>();
-
-        if (restaurants != null && restaurants.Any())
-        {
-            SessionService.PermittedRestaurants = restaurants;
-            if (Application.Current != null) Application.Current.MainPage = new MainShell();
-
-            if (restaurants.Count > 1)
-            {
-                await Shell.Current.GoToAsync(nameof(LocationSelectionPage));
-            }
-            else
-            {
-                SessionService.CurrentRestaurant = restaurants.First();
-            }
-        }
-        else
-        {
-            if (Application.Current != null) Application.Current.MainPage = new MainShell();
         }
     }
 }

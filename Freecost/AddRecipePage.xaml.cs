@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Microsoft.Maui.Controls;
+using Plugin.Firebase.Firestore;
 
 namespace Freecost
 {
@@ -23,18 +24,13 @@ namespace Freecost
 
         public class AllergenSelection
         {
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
             public bool IsSelected { get; set; }
-
-            public AllergenSelection()
-            {
-                Name = string.Empty;
-            }
         }
+
         public Recipe RecipeData { get; private set; }
         public List<RecipeIngredient> RecipeIngredients { get; private set; }
 
-        private FirestoreDb? db;
         private string restaurantId;
         private List<IngredientCsvRecord>? masterIngredientList;
         private List<AllergenSelection> Allergens { get; set; }
@@ -156,8 +152,6 @@ namespace Freecost
 
         private async void OnUploadImageClicked(object sender, EventArgs e)
         {
-            await AuthService.RefreshAuthTokenIfNeededAsync(); // Added token refresh
-
             try
             {
                 var result = await FilePicker.PickAsync(new PickOptions { PickerTitle = "Please select an image file", FileTypes = FilePickerFileType.Images });
@@ -212,20 +206,12 @@ namespace Freecost
         {
             if (SessionService.IsOffline)
             {
-                masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>();
+                masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
             }
             else
             {
-                db = FirestoreService.Db;
-                if (db == null || restaurantId == null) return;
-                var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-                var snapshot = await ingredientsCollection.GetSnapshotAsync();
-                masterIngredientList = snapshot.Documents.Select(doc =>
-                {
-                    var ingredient = doc.ConvertTo<IngredientCsvRecord>();
-                    ingredient.Id = doc.Id;
-                    return ingredient;
-                }).ToList();
+                if (string.IsNullOrEmpty(restaurantId)) return;
+                masterIngredientList = await FirestoreService.GetIngredientsAsync(restaurantId);
             }
 
             if (masterIngredientList == null) return;
@@ -356,7 +342,7 @@ namespace Freecost
         {
             try
             {
-                if (RecipeData == null) RecipeData = new Recipe();
+                RecipeData ??= new Recipe();
                 double.TryParse(YieldEntry.Text, out double yield);
                 if (yield == 0) yield = 1;
 
@@ -383,8 +369,7 @@ namespace Freecost
                 }
 
                 RecipeData.FoodCost = totalCost;
-                if (yield > 0) RecipeData.Price = totalCost / yield;
-                else RecipeData.Price = 0;
+                RecipeData.Price = (yield > 0) ? totalCost / yield : 0;
 
                 if (SessionService.IsOffline)
                 {
@@ -411,9 +396,7 @@ namespace Freecost
                 }
                 else
                 {
-                    db = FirestoreService.Db;
-                    if (db == null || restaurantId == null) return;
-                    var collection = db.Collection("recipes");
+                    var collection = CrossFirebase.Current.Firestore.Collection("recipes");
                     if (string.IsNullOrEmpty(RecipeData.Id))
                     {
                         await collection.AddAsync(RecipeData);

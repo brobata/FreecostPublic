@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "323185386330",
+    "project_id": "gfyfoodcost",
+    "storage_bucket": "gfyfoodcost.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:323185386330:android:dd49f08e44d4d0bfff4963",
+        "android_client_info": {
+          "package_name": "com.companyname.freecost"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7-ufLXGyhNZowHDoDFlCJxNosA88J9nw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,6 +2,10 @@
 using Microsoft.Maui.LifecycleEvents;
 using OfficeOpenXml;
 using CommunityToolkit.Maui;
+using Plugin.Firebase.Auth;
+using Plugin.Firebase.Core.Platforms.iOS;
+using Plugin.Firebase.Core.Platforms.Android;
+
 
 #if WINDOWS
 using Microsoft.UI;
@@ -23,6 +27,7 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
+            .RegisterFirebaseServices() // Add this
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -40,7 +45,7 @@ public static class MauiProgram
 
                     if (appWindow.Presenter is OverlappedPresenter overlappedPresenter)
                     {
-                        overlappedPresenter.Maximize(); // This will maximize the window
+                        overlappedPresenter.Maximize();
                     }
 
                     appWindow.Closing += (sender, args) =>
@@ -54,13 +59,20 @@ public static class MauiProgram
                     var nativeWindow = app.Windows.FirstOrDefault();
                     if (nativeWindow != null)
                     {
-                        // This will make the window a size that is appropriate for the screen
                         var mainScreen = UIScreen.MainScreen.Bounds;
                         nativeWindow.Frame = new CGRect(0, 0, mainScreen.Width, mainScreen.Height);
                     }
                     return true;
                 }));
 #pragma warning restore CA1422 // Validate platform compatibility
+#elif IOS
+                events.AddiOS(iOS => iOS.FinishedLaunching((app, launchOptions) => {
+                    CrossFirebase.Initialize(app, launchOptions, CreateCrossFirebaseSettings());
+                    return false;
+                }));
+#elif ANDROID
+                events.AddAndroid(android => android.OnCreate((activity, bundle) =>
+                    CrossFirebase.Initialize(activity, bundle, CreateCrossFirebaseSettings())));
 #endif
             });
 
@@ -69,5 +81,30 @@ public static class MauiProgram
 #endif
 
         return builder.Build();
+    }
+
+    private static CrossFirebaseSettings CreateCrossFirebaseSettings()
+    {
+        return new CrossFirebaseSettings(
+            isAuthEnabled: true,
+            isFirestoreEnabled: true);
+    }
+
+    private static MauiAppBuilder RegisterFirebaseServices(this MauiAppBuilder builder)
+    {
+        builder.ConfigureLifecycleEvents(events => {
+#if IOS
+            events.AddiOS(iOS => iOS.FinishedLaunching((app, launchOptions) => {
+                CrossFirebase.Initialize(app, launchOptions, CreateCrossFirebaseSettings());
+                return false;
+            }));
+#elif ANDROID
+            events.AddAndroid(android => android.OnCreate((activity, _, __) =>
+                CrossFirebase.Initialize(activity, CreateCrossFirebaseSettings())));
+#endif
+        });
+
+        builder.Services.AddSingleton(_ => CrossFirebaseAuth.Current);
+        return builder;
     }
 }

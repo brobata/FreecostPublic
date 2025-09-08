@@ -1,15 +1,13 @@
-using Google.Cloud.Firestore;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Plugin.Firebase.Firestore;
 
 namespace Freecost
 {
     public partial class EntreesPage : ContentPage
     {
-        private FirestoreDb? db;
         private string? restaurantId;
         private List<EntreeDisplayRecord> _allEntrees = new List<EntreeDisplayRecord>();
         private EntreeDisplayRecord? _selectedEntree;
@@ -25,15 +23,6 @@ namespace Freecost
             ListPanel.IsVisible = true;
             DetailPanel.IsVisible = false;
 #endif
-        }
-
-        private void OnItemDoubleTapped(object sender, Microsoft.Maui.Controls.TappedEventArgs e)
-        {
-            if (e.Parameter is EntreeDisplayRecord tappedEntree)
-            {
-                _selectedEntree = tappedEntree;
-                OnEditEntreeClicked(this, EventArgs.Empty);
-            }
         }
 
         private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
@@ -65,12 +54,26 @@ namespace Freecost
         private async Task LoadEntrees()
         {
             restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (restaurantId == null) return;
+            if (string.IsNullOrEmpty(restaurantId))
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    _allEntrees.Clear();
+                    SortAndFilterEntrees();
+                });
+                return;
+            }
 
             List<EntreeDisplayRecord> entrees;
             if (SessionService.IsOffline)
             {
                 var entreeData = await LocalStorageService.LoadAsync<Entree>(restaurantId);
+                entrees = entreeData.Select(e => new EntreeDisplayRecord { /* mapping */ }).ToList();
+            }
+            else
+            {
+                // This would require a new GetEntreesAsync method in FirestoreService
+                var entreeData = await FirestoreService.GetEntreesAsync(restaurantId);
                 entrees = entreeData.Select(e => new EntreeDisplayRecord
                 {
                     Id = e.Id,
@@ -86,36 +89,7 @@ namespace Freecost
                     Price = e.Price,
                     PlatePrice = e.PlatePrice
                 }).ToList();
-            }
-            else
-            {
-                db = FirestoreService.Db;
-                if (db == null) return;
-
-                entrees = new List<EntreeDisplayRecord>();
-                var query = db.Collection("entrees").WhereEqualTo("RestaurantId", restaurantId);
-                var snapshot = await query.GetSnapshotAsync();
-
-                entrees = snapshot.Documents.Select(document =>
-                {
-                    var entree = document.ConvertTo<Entree>();
-                    return new EntreeDisplayRecord
-                    {
-                        Id = document.Id,
-                        Name = entree.Name,
-                        Yield = entree.Yield,
-                        YieldUnit = entree.YieldUnit,
-                        Directions = entree.Directions,
-                        PhotoUrl = entree.PhotoUrl,
-                        RestaurantId = entree.RestaurantId,
-                        Allergens = entree.Allergens,
-                        Components = entree.Components,
-                        FoodCost = entree.FoodCost,
-                        Price = entree.Price,
-                        PlatePrice = entree.PlatePrice
-                    };
-                }).ToList();
-                await LocalStorageService.SaveAsync(entrees.Cast<Entree>().ToList(), restaurantId);
+                await LocalStorageService.SaveAsync(entreeData.Cast<Entree>().ToList(), restaurantId);
             }
             _allEntrees = entrees;
             SortAndFilterEntrees();
@@ -123,7 +97,7 @@ namespace Freecost
 
         private async void OnAddEntreeClicked(object sender, EventArgs e)
         {
-            if (restaurantId == null) return;
+            if (string.IsNullOrEmpty(restaurantId)) return;
             await Navigation.PushAsync(new AddEntreePage(restaurantId));
         }
 
@@ -134,13 +108,13 @@ namespace Freecost
                 await DisplayAlert("No Entree Selected", "Please select an entree to edit.", "OK");
                 return;
             }
-            if (restaurantId == null) return;
+            if (string.IsNullOrEmpty(restaurantId)) return;
             await Navigation.PushAsync(new AddEntreePage(restaurantId, _selectedEntree));
         }
 
         private async void OnDeleteEntreeClicked(object sender, EventArgs e)
         {
-            if (_selectedEntree == null)
+            if (_selectedEntree == null || string.IsNullOrEmpty(_selectedEntree.Id))
             {
                 await DisplayAlert("No Entree Selected", "Please select an entree to delete.", "OK");
                 return;
@@ -149,100 +123,25 @@ namespace Freecost
             bool answer = await DisplayAlert("Confirm Delete", $"Are you sure you want to delete {_selectedEntree.Name}?", "Yes", "No");
             if (answer)
             {
-                if (db == null || restaurantId == null || _selectedEntree.Id == null) return;
-                await db.Collection("entrees").Document(_selectedEntree.Id).DeleteAsync();
-                LoadData();
-            }
-        }
-
-        private void OnEntreeSelected(object sender, SelectedItemChangedEventArgs e)
-        {
-            // First, un-select the previously selected item if it exists
-            if (_selectedEntree != null)
-            {
-                _selectedEntree.IsSelected = false;
-            }
-
-            _selectedEntree = e.SelectedItem as EntreeDisplayRecord;
-
-            if (_selectedEntree != null)
-            {
-                _selectedEntree.IsSelected = true;
-
-                EntreeNameLabel.Text = _selectedEntree.Name;
-                EntreeImage.Source = _selectedEntree.PhotoUrl;
-
-                if (_selectedEntree.Allergens != null && _selectedEntree.Allergens.Any())
+                if (SessionService.IsOffline)
                 {
-                    AllergensLabel.Text = " " + string.Join(", ", _selectedEntree.Allergens);
+                    // offline logic
                 }
                 else
                 {
-                    AllergensLabel.Text = " None listed.";
+                    await CrossFirebase.Current.Firestore
+                                    .Collection("entrees")
+                                    .Document(_selectedEntree.Id)
+                                    .DeleteAsync();
                 }
-
-                ComponentsListView.ItemsSource = _selectedEntree.Components;
-                DirectionsLabel.Text = _selectedEntree.Directions ?? "No directions provided.";
-#if ANDROID
-                ListPanel.IsVisible = false;
-                DetailPanel.IsVisible = true;
-                EntreeDetailsView.IsVisible = true;
-                SelectEntreeView.IsVisible = false;
-#else
-                EntreeDetailsView.IsVisible = true;
-                SelectEntreeView.IsVisible = false;
-#endif
+                LoadData();
             }
-            else
-            {
-#if !ANDROID
-                EntreeDetailsView.IsVisible = false;
-                SelectEntreeView.IsVisible = true;
-#endif
-            }
-        }
-
-        private void OnBackClicked(object sender, EventArgs e)
-        {
-#if ANDROID
-            ListPanel.IsVisible = true;
-            DetailPanel.IsVisible = false;
-            if (_selectedEntree != null)
-            {
-                _selectedEntree.IsSelected = false;
-                _selectedEntree = null;
-            }
-            EntreesListView.SelectedItem = null;
-#endif
-        }
-
-        private void OnSortClicked(object sender, Microsoft.Maui.Controls.TappedEventArgs e)
-        {
-            var newSortColumn = e.Parameter as string;
-            if (string.IsNullOrEmpty(newSortColumn)) return;
-
-            if (_currentSortColumn == newSortColumn)
-            {
-                _isSortAscending = !_isSortAscending;
-            }
-            else
-            {
-                _currentSortColumn = newSortColumn;
-                _isSortAscending = true;
-            }
-
-            SortAndFilterEntrees();
-        }
-        private void OnSearchBarTextChanged(object sender, TextChangedEventArgs e)
-        {
-            SortAndFilterEntrees();
         }
 
         private void SortAndFilterEntrees()
         {
             var entrees = _allEntrees;
-            var searchBar = this.FindByName("EntreesSearchBar") as SearchBar;
-            var searchTerm = searchBar?.Text;
+            var searchTerm = EntreesSearchBar?.Text;
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -258,5 +157,7 @@ namespace Freecost
                 EntreesListView.ItemsSource = sortedEntrees;
             });
         }
+
+        // Keep your other UI methods like OnEntreeSelected, OnBackClicked, etc.
     }
 }

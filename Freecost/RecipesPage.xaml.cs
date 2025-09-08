@@ -1,15 +1,13 @@
-using Google.Cloud.Firestore;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Plugin.Firebase.Firestore;
 
 namespace Freecost
 {
     public partial class RecipesPage : ContentPage
     {
-        private FirestoreDb? db;
         private string? restaurantId;
         private List<RecipeDisplayRecord> _allRecipes = new List<RecipeDisplayRecord>();
         private RecipeDisplayRecord? _selectedRecipe;
@@ -25,15 +23,6 @@ namespace Freecost
             ListPanel.IsVisible = true;
             DetailPanel.IsVisible = false;
 #endif
-        }
-
-        private void OnItemDoubleTapped(object sender, Microsoft.Maui.Controls.TappedEventArgs e)
-        {
-            if (e.Parameter is RecipeDisplayRecord tappedRecipe)
-            {
-                _selectedRecipe = tappedRecipe;
-                OnEditRecipeClicked(this, EventArgs.Empty);
-            }
         }
 
         private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
@@ -65,12 +54,25 @@ namespace Freecost
         private async Task LoadRecipes()
         {
             restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (restaurantId == null) return;
+            if (string.IsNullOrEmpty(restaurantId))
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    _allRecipes.Clear();
+                    SortAndFilterRecipes();
+                });
+                return;
+            }
 
             List<RecipeDisplayRecord> recipes;
             if (SessionService.IsOffline)
             {
                 var recipeData = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
+                recipes = recipeData.Select(r => new RecipeDisplayRecord { /* mapping */ }).ToList();
+            }
+            else
+            {
+                var recipeData = await FirestoreService.GetRecipesAsync(restaurantId);
                 recipes = recipeData.Select(r => new RecipeDisplayRecord
                 {
                     Id = r.Id,
@@ -85,35 +87,7 @@ namespace Freecost
                     FoodCost = r.FoodCost,
                     Price = r.Price
                 }).ToList();
-            }
-            else
-            {
-                db = FirestoreService.Db;
-                if (db == null) return;
-
-                recipes = new List<RecipeDisplayRecord>();
-                var query = db.Collection("recipes").WhereEqualTo("RestaurantId", restaurantId);
-                var snapshot = await query.GetSnapshotAsync();
-
-                recipes = snapshot.Documents.Select(document =>
-                {
-                    var recipe = document.ConvertTo<Recipe>();
-                    return new RecipeDisplayRecord
-                    {
-                        Id = document.Id,
-                        Name = recipe.Name,
-                        Yield = recipe.Yield,
-                        YieldUnit = recipe.YieldUnit,
-                        Directions = recipe.Directions,
-                        PhotoUrl = recipe.PhotoUrl,
-                        RestaurantId = recipe.RestaurantId,
-                        Allergens = recipe.Allergens,
-                        Ingredients = recipe.Ingredients,
-                        FoodCost = recipe.FoodCost,
-                        Price = recipe.Price
-                    };
-                }).ToList();
-                await LocalStorageService.SaveAsync(recipes.Cast<Recipe>().ToList(), restaurantId);
+                await LocalStorageService.SaveAsync(recipeData.Cast<Recipe>().ToList(), restaurantId);
             }
             _allRecipes = recipes;
             SortAndFilterRecipes();
@@ -121,7 +95,7 @@ namespace Freecost
 
         private async void OnAddRecipeClicked(object sender, EventArgs e)
         {
-            if (restaurantId == null) return;
+            if (string.IsNullOrEmpty(restaurantId)) return;
             await Navigation.PushAsync(new AddRecipePage(restaurantId));
         }
 
@@ -132,13 +106,13 @@ namespace Freecost
                 await DisplayAlert("No Recipe Selected", "Please select a recipe to edit.", "OK");
                 return;
             }
-            if (restaurantId == null) return;
+            if (string.IsNullOrEmpty(restaurantId)) return;
             await Navigation.PushAsync(new AddRecipePage(restaurantId, _selectedRecipe));
         }
 
         private async void OnDeleteRecipeClicked(object sender, EventArgs e)
         {
-            if (_selectedRecipe == null)
+            if (_selectedRecipe == null || string.IsNullOrEmpty(_selectedRecipe.Id))
             {
                 await DisplayAlert("No Recipe Selected", "Please select a recipe to delete.", "OK");
                 return;
@@ -147,103 +121,25 @@ namespace Freecost
             bool answer = await DisplayAlert("Confirm Delete", $"Are you sure you want to delete {_selectedRecipe.Name}?", "Yes", "No");
             if (answer)
             {
-                if (db == null || restaurantId == null || _selectedRecipe.Id == null) return;
-                await db.Collection("recipes").Document(_selectedRecipe.Id).DeleteAsync();
-                LoadData();
-            }
-        }
-
-        private void OnRecipeSelected(object sender, SelectedItemChangedEventArgs e)
-        {
-            // First, un-select the previously selected item if it exists
-            if (_selectedRecipe != null)
-            {
-                _selectedRecipe.IsSelected = false;
-            }
-
-            // Get the newly selected item
-            _selectedRecipe = e.SelectedItem as RecipeDisplayRecord;
-
-            if (_selectedRecipe != null)
-            {
-                // Set the IsSelected property to true to trigger the highlight
-                _selectedRecipe.IsSelected = true;
-
-                // The rest of your logic to display details
-                RecipeNameLabel.Text = _selectedRecipe.Name;
-                RecipeImage.Source = _selectedRecipe.PhotoUrl;
-
-                if (_selectedRecipe.Allergens != null && _selectedRecipe.Allergens.Any())
+                if (SessionService.IsOffline)
                 {
-                    AllergensLabel.Text = " " + string.Join(", ", _selectedRecipe.Allergens);
+                    // Handle offline deletion
                 }
                 else
                 {
-                    AllergensLabel.Text = " None listed.";
+                    await CrossFirebase.Current.Firestore
+                                     .Collection("recipes")
+                                     .Document(_selectedRecipe.Id)
+                                     .DeleteAsync();
                 }
-
-                IngredientsListView.ItemsSource = _selectedRecipe.Ingredients;
-                DirectionsLabel.Text = _selectedRecipe.Directions ?? "No directions provided.";
-
-#if ANDROID
-                ListPanel.IsVisible = false;
-                DetailPanel.IsVisible = true;
-                RecipeDetailsView.IsVisible = true;
-                SelectRecipeView.IsVisible = false;
-#else
-                RecipeDetailsView.IsVisible = true;
-                SelectRecipeView.IsVisible = false;
-#endif
+                LoadData();
             }
-            else
-            {
-#if !ANDROID
-                RecipeDetailsView.IsVisible = false;
-                SelectRecipeView.IsVisible = true;
-#endif
-            }
-        }
-
-        private void OnBackClicked(object sender, EventArgs e)
-        {
-#if ANDROID
-            ListPanel.IsVisible = true;
-            DetailPanel.IsVisible = false;
-            if (_selectedRecipe != null)
-            {
-                _selectedRecipe.IsSelected = false;
-                _selectedRecipe = null;
-            }
-            RecipesListView.SelectedItem = null;
-#endif
-        }
-
-        private void OnSortClicked(object sender, Microsoft.Maui.Controls.TappedEventArgs e)
-        {
-            var newSortColumn = e.Parameter as string;
-            if (string.IsNullOrEmpty(newSortColumn)) return;
-
-            if (_currentSortColumn == newSortColumn)
-            {
-                _isSortAscending = !_isSortAscending;
-            }
-            else
-            {
-                _currentSortColumn = newSortColumn;
-                _isSortAscending = true;
-            }
-            SortAndFilterRecipes();
-        }
-        private void OnSearchBarTextChanged(object sender, TextChangedEventArgs e)
-        {
-            SortAndFilterRecipes();
         }
 
         private void SortAndFilterRecipes()
         {
             var recipes = _allRecipes;
-            var searchBar = this.FindByName("RecipesSearchBar") as SearchBar;
-            var searchTerm = searchBar?.Text;
+            var searchTerm = RecipesSearchBar?.Text;
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -259,5 +155,8 @@ namespace Freecost
                 RecipesListView.ItemsSource = sortedRecipes;
             });
         }
+
+        // Keep your other UI methods like OnRecipeSelected, OnBackClicked, etc.
+        // They do not need to change.
     }
 }

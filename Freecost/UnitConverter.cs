@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 
 namespace Freecost
 {
@@ -12,26 +11,12 @@ namespace Freecost
 
         public static async Task InitializeAsync()
         {
-            if (SessionService.IsOffline)
-            {
-                _conversions = await LocalStorageService.LoadAsync<UnitConversion>();
-            }
-            else
-            {
-                var db = FirestoreService.Db;
-                if (db == null)
-                {
-                    // Handle case where Firestore is not initialized
-                    return;
-                }
-                var snapshot = await db.Collection("unitConversions").GetSnapshotAsync();
-                _conversions = snapshot.Documents.Select(doc => {
-                    var conversion = doc.ConvertTo<UnitConversion>();
-                    conversion.Id = doc.Id;
-                    return conversion;
-                }).ToList();
-                await LocalStorageService.SaveAsync(_conversions);
-            }
+            // Always fetch from Firestore. The client SDK may cache this.
+            // This call will work even if the user is not logged in because of our security rules.
+            _conversions = await FirestoreService.GetUnitConversionsAsync();
+
+            // Also save to local storage for offline use
+            await LocalStorageService.SaveAsync(_conversions);
         }
 
         public static double Convert(double value, string fromUnit, string toUnit)
