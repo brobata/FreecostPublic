@@ -22,6 +22,9 @@ namespace Freecost
 
             if (shouldShowPopup)
             {
+                // Wait for 5 seconds before showing the popup
+                await Task.Delay(5000);
+
                 string? restaurantId = SessionService.CurrentRestaurant?.Id;
                 if (restaurantId == null)
                 {

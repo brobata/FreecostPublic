@@ -88,5 +88,10 @@ namespace Freecost
                 }
             }
         }
+
+        private async void OnDoneClicked(object sender, EventArgs e)
+        {
+            await Navigation.PopAsync();
+        }
     }
 }

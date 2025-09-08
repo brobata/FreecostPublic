@@ -16,6 +16,7 @@
         <ShellContent Title="Entrees" ContentTemplate="{DataTemplate local:EntreesPage}" Route="EntreesPage" />
         <ShellContent Title="Ingredients" ContentTemplate="{DataTemplate local:IngredientsPage}" Route="IngredientsPage" />
         <ShellContent Title="Settings" ContentTemplate="{DataTemplate local:SettingsPage}" Route="SettingsPage" />
+        <ShellContent Title="Admin" ContentTemplate="{DataTemplate local:AdminPage}" Route="AdminPage" IsVisible="{Binding IsAdmin}" />
     </TabBar>
 
 </Shell>

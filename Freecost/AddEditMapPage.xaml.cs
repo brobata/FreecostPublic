@@ -142,5 +142,10 @@ namespace Freecost
                 await DisplayAlert("Error", $"Failed to save map: {ex.Message}", "OK");
             }
         }
+
+        private async void OnCancelClicked(object sender, EventArgs e)
+        {
+            await Navigation.PopAsync();
+        }
     }
 }

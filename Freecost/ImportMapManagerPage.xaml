@@ -8,20 +8,25 @@
             Text="Import Map Manager"
             VerticalOptions="Center"
             HorizontalOptions="Center" />
+
         <Button Text="Select File" Clicked="OnSelectFileClicked" />
         <Button Text="Add Map" Clicked="OnAddMapClicked" />
+        <Button Text="Export Maps" Clicked="OnExportMapsClicked" />
         <ListView x:Name="MapsListView">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <ViewCell>
+
                         <StackLayout Orientation="Horizontal">
                             <Label Text="{Binding MapName}" />
                             <Button Text="Edit" Clicked="OnEditMapClicked" CommandParameter="{Binding .}" />
                             <Button Text="Delete" Clicked="OnDeleteMapClicked" CommandParameter="{Binding .}" />
+
                         </StackLayout>
                     </ViewCell>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+        <Button Text="Done" Clicked="OnDoneClicked" />
     </VerticalStackLayout>
 </ContentPage>

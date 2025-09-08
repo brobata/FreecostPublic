@@ -52,21 +52,33 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Update="FlyoutContentView.xaml.cs">
-	    <DependentUpon>FlyoutContentView.xaml</DependentUpon>
-	  </Compile>
+		<Compile Update="AddEditMapPage.xaml.cs">
+			<DependentUpon>AddEditMapPage.xaml</DependentUpon>
+		</Compile>
+		<Compile Update="FlyoutContentView.xaml.cs">
+			<DependentUpon>FlyoutContentView.xaml</DependentUpon>
+		</Compile>
+		<Compile Update="ImportMapManagerPage.xaml.cs">
+			<DependentUpon>ImportMapManagerPage.xaml</DependentUpon>
+		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiXaml Update="AddEditUnitConversionPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
-	  <MauiXaml Update="FlyoutContentView.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
-	  <MauiXaml Update="UnitConversionManagerPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
+		<MauiXaml Update="AddEditMapPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="AddEditUnitConversionPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="FlyoutContentView.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="ImportMapManagerPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="UnitConversionManagerPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 	</ItemGroup>
 
 </Project>

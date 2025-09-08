@@ -8,6 +8,8 @@ using CsvHelper;
 using Microsoft.Maui.Storage;
 using OfficeOpenXml;
 using Google.Cloud.Firestore;
+using System.Text.Json;
+using CommunityToolkit.Maui.Storage;
 
 namespace Freecost;
 
@@ -151,5 +153,35 @@ public partial class ImportMapManagerPage : ContentPage
                 await Navigation.PushAsync(new AddEditMapPage { MapId = map.Id });
             }
         }
+    }
+
+    private async void OnExportMapsClicked(object sender, EventArgs e)
+    {
+        if (maps == null || !maps.Any())
+        {
+            await DisplayAlert("No Maps", "There are no import maps to export.", "OK");
+            return;
+        }
+
+        try
+        {
+            var json = JsonSerializer.Serialize(maps, new JsonSerializerOptions { WriteIndented = true });
+            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            var fileSaverResult = await FileSaver.Default.SaveAsync("import_maps.json", stream, default);
+            if (!fileSaverResult.IsSuccessful)
+            {
+                await DisplayAlert("Export Failed", $"There was an error saving the file: {fileSaverResult.Exception?.Message}", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Export Error", $"An unexpected error occurred: {ex.Message}", "OK");
+        }
+    }
+
+    private async void OnDoneClicked(object sender, EventArgs e)
+    {
+        await Navigation.PopAsync();
     }
 }
