@@ -91,14 +91,12 @@ namespace Freecost
 
         private async Task GoToAdminPage()
         {
-            // The Admin page is not a tab, so it must be navigated to as a route.
             await Shell.Current.GoToAsync(nameof(AdminPage));
             Shell.Current.FlyoutIsPresented = false;
         }
 
         private async Task OnSettingsClicked()
         {
-            // The Settings page is a tab, so we can navigate to it directly.
             await Shell.Current.GoToAsync("//SettingsPage");
             Shell.Current.FlyoutIsPresented = false;
         }

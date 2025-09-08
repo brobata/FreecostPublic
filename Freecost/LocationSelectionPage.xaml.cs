@@ -31,7 +31,9 @@ public partial class LocationSelectionPage : ContentPage
         if (LocationPicker.SelectedItem is Restaurant selectedRestaurant)
         {
             SessionService.CurrentRestaurant = selectedRestaurant;
-            SessionService.SaveSession(); // <-- This line is crucial. It saves the user's choice.
+            // This is the critical new line that saves your choice reliably
+            Preferences.Set("LastUsedRestaurantId", selectedRestaurant.Id);
+            SessionService.SaveSession();
 
             if (Application.Current != null)
             {
