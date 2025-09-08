@@ -3,7 +3,6 @@ using CsvHelper.Configuration.Attributes;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using Microsoft.Maui.Graphics;
 
 namespace Freecost
 {
@@ -97,7 +96,7 @@ namespace Freecost
         [FirestoreProperty]
         public double Price { get; set; }
         [FirestoreProperty]
-        public double PlatePrice { get; set; } // Add this line
+        public double PlatePrice { get; set; }
     }
 
     [FirestoreData]
@@ -163,7 +162,6 @@ namespace Freecost
         public string? Name { get; set; }
     }
 
-    [FirestoreData]
     public class IngredientDisplayRecord : IngredientCsvRecord, INotifyPropertyChanged
     {
         private bool _isSelected;
@@ -190,7 +188,6 @@ namespace Freecost
         }
     }
 
-    [FirestoreData]
     public class RecipeDisplayRecord : Recipe, INotifyPropertyChanged
     {
         private bool _isSelected;
@@ -215,7 +212,6 @@ namespace Freecost
         }
     }
 
-    [FirestoreData]
     public class EntreeDisplayRecord : Entree, INotifyPropertyChanged
     {
         private bool _isSelected;
@@ -248,3 +244,4 @@ namespace Freecost
         public List<ImportMap> ImportMaps { get; set; } = new List<ImportMap>();
     }
 }
+
