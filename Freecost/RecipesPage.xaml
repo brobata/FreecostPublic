@@ -73,6 +73,9 @@
                             <OnPlatform x:TypeArguments="View">
                                 <On Platform="Android">
                                     <Frame Padding="10" Margin="5" BorderColor="{StaticResource BorderColor}" CornerRadius="5">
+                                        <Frame.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnItemDoubleTapped" NumberOfTapsRequired="2" CommandParameter="{Binding .}" />
+                                        </Frame.GestureRecognizers>
                                         <Frame.Triggers>
                                             <DataTrigger TargetType="Frame" Binding="{Binding IsSelected}" Value="True">
                                                 <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
@@ -104,6 +107,9 @@
                                 </On>
                                 <On Platform="WinUI, MacCatalyst, iOS">
                                     <Grid ColumnSpacing="10" Padding="12,5">
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnItemDoubleTapped" NumberOfTapsRequired="2" CommandParameter="{Binding .}" />
+                                        </Grid.GestureRecognizers>
                                         <Grid.Triggers>
                                             <DataTrigger TargetType="Grid" Binding="{Binding IsSelected}" Value="True">
                                                 <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />

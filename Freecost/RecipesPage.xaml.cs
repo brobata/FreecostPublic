@@ -26,6 +26,15 @@ namespace Freecost
 #endif
         }
 
+        private void OnItemDoubleTapped(object sender, Microsoft.Maui.Controls.TappedEventArgs e)
+        {
+            if (e.Parameter is RecipeDisplayRecord tappedRecipe)
+            {
+                _selectedRecipe = tappedRecipe;
+                OnEditRecipeClicked(this, EventArgs.Empty);
+            }
+        }
+
         private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(SessionService.CurrentRestaurant))
@@ -215,7 +224,7 @@ namespace Freecost
 #endif
         }
 
-        private void OnSortClicked(object sender, TappedEventArgs e)
+        private void OnSortClicked(object sender, Microsoft.Maui.Controls.TappedEventArgs e)
         {
             var newSortColumn = e.Parameter as string;
             if (string.IsNullOrEmpty(newSortColumn)) return;

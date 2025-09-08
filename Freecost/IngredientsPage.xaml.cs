@@ -21,6 +21,7 @@ namespace Freecost
     {
         private FirestoreDb? db;
         private string? restaurantId;
+        private List<IngredientDisplayRecord> _allIngredients = new List<IngredientDisplayRecord>();
         private List<IngredientDisplayRecord> _ingredients = new List<IngredientDisplayRecord>();
         private List<IngredientDisplayRecord> _selectedIngredients = new List<IngredientDisplayRecord>();
         private IngredientDisplayRecord? _lastSelectedItem;
@@ -35,6 +36,24 @@ namespace Freecost
             {
                 CreateInitialMaps();
             }
+        }
+
+        private void OnRowDoubleTapped(object? sender, Microsoft.Maui.Controls.TappedEventArgs e)
+        {
+            if (e.Parameter is not IngredientDisplayRecord tappedIngredient) return;
+
+            // Clear existing selections and select the double-tapped item
+            foreach (var item in _selectedIngredients)
+            {
+                item.IsSelected = false;
+            }
+            _selectedIngredients.Clear();
+
+            tappedIngredient.IsSelected = true;
+            _selectedIngredients.Add(tappedIngredient);
+
+            // Call the existing edit method
+            OnEditIngredientClicked(this, EventArgs.Empty);
         }
 
         private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
@@ -71,7 +90,7 @@ namespace Freecost
             if (SessionService.IsOffline)
             {
                 var ingredientsList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
-                _ingredients = ingredientsList.Select(i => new IngredientDisplayRecord
+                _allIngredients = ingredientsList.Select(i => new IngredientDisplayRecord
                 {
                     Id = i.Id,
                     SupplierName = i.SupplierName,
@@ -110,9 +129,11 @@ namespace Freecost
                     };
                     ingredientsList.Add(displayRecord);
                 }
-                _ingredients = ingredientsList;
-                await LocalStorageService.SaveAsync(_ingredients.Cast<IngredientCsvRecord>().ToList(), restaurantId);
+                _allIngredients = ingredientsList;
+                await LocalStorageService.SaveAsync(_allIngredients.Cast<IngredientCsvRecord>().ToList(), restaurantId);
             }
+
+            _ingredients = new List<IngredientDisplayRecord>(_allIngredients);
 
             SortIngredients();
             MainThread.BeginInvokeOnMainThread(PopulateGrid);
@@ -130,9 +151,13 @@ namespace Freecost
 
                 IngredientsGrid.RowDefinitions.Add(new RowDefinition { Height = Microsoft.Maui.GridLength.Auto });
 
-                var tapGesture = new TapGestureRecognizer();
-                tapGesture.Tapped += OnRowTapped;
-                tapGesture.CommandParameter = ingredient;
+                var singleTapGesture = new TapGestureRecognizer();
+                singleTapGesture.Tapped += OnRowTapped;
+                singleTapGesture.CommandParameter = ingredient;
+
+                var doubleTapGesture = new TapGestureRecognizer { NumberOfTapsRequired = 2 };
+                doubleTapGesture.Tapped += OnRowDoubleTapped;
+                doubleTapGesture.CommandParameter = ingredient;
 
                 Color backgroundColor;
 #if ANDROID || IOS || MACCATALYST || WINDOWS
@@ -149,7 +174,7 @@ namespace Freecost
                 var backgroundGrid = new Grid
                 {
                     BackgroundColor = backgroundColor,
-                    GestureRecognizers = { tapGesture },
+                    GestureRecognizers = { singleTapGesture, doubleTapGesture },
                     BindingContext = ingredient
                 };
 
@@ -280,12 +305,12 @@ namespace Freecost
         }
 
 
-        private async void OnAddIngredientClicked(object sender, EventArgs e)
+        private async void OnAddIngredientClicked(object? sender, EventArgs e)
         {
             await Navigation.PushAsync(new AddIngredientPage());
         }
 
-        private async void OnEditIngredientClicked(object sender, EventArgs e)
+        private async void OnEditIngredientClicked(object? sender, EventArgs e)
         {
             if (_selectedIngredients.Count != 1)
             {
@@ -295,7 +320,7 @@ namespace Freecost
             await Navigation.PushAsync(new AddIngredientPage(_selectedIngredients.First()));
         }
 
-        private async void OnDeleteIngredientClicked(object sender, EventArgs e)
+        private async void OnDeleteIngredientClicked(object? sender, EventArgs e)
         {
             if (_selectedIngredients.Count == 0)
             {
@@ -360,6 +385,26 @@ namespace Freecost
                 SortIngredients();
                 PopulateGrid();
             }
+        }
+
+        private void OnSearchBarTextChanged(object? sender, TextChangedEventArgs e)
+        {
+            var searchTerm = e.NewTextValue;
+
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                _ingredients = new List<IngredientDisplayRecord>(_allIngredients);
+            }
+            else
+            {
+                _ingredients = _allIngredients
+                    .Where(i => (i.ItemName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (i.AliasName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (i.SupplierName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList();
+            }
+
+            PopulateGrid();
         }
 
         #region Bulk Import Logic

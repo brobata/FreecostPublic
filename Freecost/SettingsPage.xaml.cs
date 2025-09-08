@@ -1,9 +1,10 @@
 using System.Text.Json;
 using System.ComponentModel;
-using OfficeOpenXml;
-using System.Linq;
 using System.IO;
+using System.IO.Compression;
 using CommunityToolkit.Maui.Storage;
+using System.Linq;
+using Google.Cloud.Firestore;
 
 namespace Freecost;
 
@@ -66,62 +67,41 @@ public partial class SettingsPage : ContentPage
 
         var allData = await LocalStorageService.GetAllDataAsync(restaurantId);
 
-        using (var package = new ExcelPackage())
+        using var memoryStream = new MemoryStream();
+        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
         {
-            var ingredientsSheet = package.Workbook.Worksheets.Add("Ingredients");
-            ingredientsSheet.Cells.LoadFromCollection(allData.Ingredients, true);
-
-            var recipesSheet = package.Workbook.Worksheets.Add("Recipes");
-            recipesSheet.Cells.LoadFromCollection(allData.Recipes.Select(r => new {
-                r.Id,
-                r.SKU,
-                r.Name,
-                r.Yield,
-                r.YieldUnit,
-                r.Directions,
-                r.PhotoUrl,
-                r.RestaurantId,
-                Allergens = r.Allergens != null ? string.Join(",", r.Allergens) : "",
-                Ingredients = r.Ingredients != null ? JsonSerializer.Serialize(r.Ingredients) : "",
-                r.FoodCost,
-                r.Price
-            }), true);
-
-            var entreesSheet = package.Workbook.Worksheets.Add("Entrees");
-            entreesSheet.Cells.LoadFromCollection(allData.Entrees.Select(e => new {
-                e.Id,
-                e.Name,
-                e.Yield,
-                e.YieldUnit,
-                e.Directions,
-                e.PhotoUrl,
-                e.RestaurantId,
-                Allergens = e.Allergens != null ? string.Join(",", e.Allergens) : "",
-                Components = e.Components != null ? JsonSerializer.Serialize(e.Components) : "",
-                e.FoodCost,
-                e.Price,
-                e.PlatePrice
-            }), true);
-
-            using var stream = new MemoryStream();
-            await package.SaveAsAsync(stream);
-
-            var fileSaverResult = await FileSaver.Default.SaveAsync("freecost_export.xlsx", stream, default);
-            if (!fileSaverResult.IsSuccessful)
+            async Task AddToArchive<T>(List<T> data, string fileName)
             {
-                await DisplayAlert("Export Failed", $"There was an error saving the file: {fileSaverResult.Exception?.Message}", "OK");
+                var entry = archive.CreateEntry(fileName);
+                using var entryStream = entry.Open();
+                await JsonSerializer.SerializeAsync(entryStream, data, new JsonSerializerOptions { WriteIndented = true });
             }
+
+            await AddToArchive(allData.Ingredients, "ingredients.json");
+            await AddToArchive(allData.Recipes, "recipes.json");
+            await AddToArchive(allData.Entrees, "entrees.json");
+        }
+
+        memoryStream.Position = 0;
+        var fileSaverResult = await FileSaver.Default.SaveAsync("freecost_export.zip", memoryStream, default);
+        if (!fileSaverResult.IsSuccessful)
+        {
+            await DisplayAlert("Export Failed", $"There was an error saving the file: {fileSaverResult.Exception?.Message}", "OK");
         }
     }
 
     private async void OnImportClicked(object sender, EventArgs e)
     {
-        var restaurantId = SessionService.CurrentRestaurant?.Id;
-        if (restaurantId == null)
+        var currentRestaurant = SessionService.CurrentRestaurant;
+
+        if (currentRestaurant == null || string.IsNullOrEmpty(currentRestaurant.Id))
         {
-            await DisplayAlert("Location Needed", "Please select a location before importing data.", "OK");
+            await DisplayAlert("No Location Selected", "Please use the main menu to change your location before importing data.", "OK");
             return;
         }
+
+        string restaurantId = currentRestaurant.Id;
+        string restaurantName = currentRestaurant.Name ?? "your current location";
 
         try
         {
@@ -130,149 +110,111 @@ public partial class SettingsPage : ContentPage
                 PickerTitle = "Please select a data file to import",
                 FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
-                    { DevicePlatform.WinUI, new[] { ".xlsx" } },
-                    { DevicePlatform.macOS, new[] { "xlsx" } },
+                    { DevicePlatform.WinUI, new[] { ".zip" } },
+                    { DevicePlatform.macOS, new[] { "zip" } },
                 })
             });
 
             if (result != null)
             {
-                using (var stream = await result.OpenReadAsync())
+                using var stream = await result.OpenReadAsync();
+                using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+
+                var importedData = new AllData();
+
+                async Task<List<T>?> ReadFromArchive<T>(string fileName)
                 {
-                    AllData importedData = new AllData();
-                    using (var package = new ExcelPackage(stream))
-                    {
-                        var ingredientsSheet = package.Workbook.Worksheets["Ingredients"];
-                        if (ingredientsSheet != null)
-                        {
-                            for (int row = 2; row <= ingredientsSheet.Dimension.End.Row; row++)
-                            {
-                                var itemName = ingredientsSheet.Cells[row, 3].Text;
-                                if (string.IsNullOrWhiteSpace(itemName)) continue;
-                                importedData.Ingredients.Add(new IngredientCsvRecord
-                                {
-                                    Id = ingredientsSheet.Cells[row, 1].Text,
-                                    SupplierName = ingredientsSheet.Cells[row, 2].Text,
-                                    ItemName = itemName,
-                                    AliasName = ingredientsSheet.Cells[row, 4].Text,
-                                    CasePrice = double.TryParse(ingredientsSheet.Cells[row, 5].Text, out var cp) ? cp : 0,
-                                    CaseQuantity = double.TryParse(ingredientsSheet.Cells[row, 6].Text, out var cq) ? cq : 0,
-                                    Unit = ingredientsSheet.Cells[row, 7].Text,
-                                    SKU = ingredientsSheet.Cells[row, 8].Text
-                                });
-                            }
-                        }
-
-                        var recipesSheet = package.Workbook.Worksheets["Recipes"];
-                        if (recipesSheet != null)
-                        {
-                            for (int row = 2; row <= recipesSheet.Dimension.End.Row; row++)
-                            {
-                                var recipeName = recipesSheet.Cells[row, 3].Text;
-                                if (string.IsNullOrWhiteSpace(recipeName)) continue;
-                                importedData.Recipes.Add(new Recipe
-                                {
-                                    Id = recipesSheet.Cells[row, 1].Text,
-                                    SKU = recipesSheet.Cells[row, 2].Text,
-                                    Name = recipeName,
-                                    Yield = double.TryParse(recipesSheet.Cells[row, 4].Text, out var y) ? y : 0,
-                                    YieldUnit = recipesSheet.Cells[row, 5].Text,
-                                    Directions = recipesSheet.Cells[row, 6].Text,
-                                    PhotoUrl = recipesSheet.Cells[row, 7].Text,
-                                    RestaurantId = restaurantId,
-                                    Allergens = recipesSheet.Cells[row, 9].Text?.Split(',').ToList() ?? new List<string>(),
-                                    Ingredients = JsonSerializer.Deserialize<List<RecipeIngredient>>(recipesSheet.Cells[row, 10].Text ?? "[]"),
-                                    FoodCost = double.TryParse(recipesSheet.Cells[row, 11].Text, out var fc) ? fc : 0,
-                                    Price = double.TryParse(recipesSheet.Cells[row, 12].Text, out var p) ? p : 0
-                                });
-                            }
-                        }
-
-                        var entreesSheet = package.Workbook.Worksheets["Entrees"];
-                        if (entreesSheet != null)
-                        {
-                            for (int row = 2; row <= entreesSheet.Dimension.End.Row; row++)
-                            {
-                                var entreeName = entreesSheet.Cells[row, 2].Text;
-                                if (string.IsNullOrWhiteSpace(entreeName)) continue;
-                                importedData.Entrees.Add(new Entree
-                                {
-                                    Id = entreesSheet.Cells[row, 1].Text,
-                                    Name = entreeName,
-                                    Yield = double.TryParse(entreesSheet.Cells[row, 3].Text, out var y) ? y : 0,
-                                    YieldUnit = entreesSheet.Cells[row, 4].Text,
-                                    Directions = entreesSheet.Cells[row, 5].Text,
-                                    PhotoUrl = entreesSheet.Cells[row, 6].Text,
-                                    RestaurantId = restaurantId,
-                                    Allergens = entreesSheet.Cells[row, 8].Text?.Split(',').ToList() ?? new List<string>(),
-                                    Components = JsonSerializer.Deserialize<List<EntreeComponent>>(entreesSheet.Cells[row, 9].Text ?? "[]"),
-                                    FoodCost = double.TryParse(entreesSheet.Cells[row, 10].Text, out var fc) ? fc : 0,
-                                    Price = double.TryParse(entreesSheet.Cells[row, 11].Text, out var p) ? p : 0,
-                                    PlatePrice = double.TryParse(entreesSheet.Cells[row, 12].Text, out var pp) ? pp : 0
-                                });
-                            }
-                        }
-                    }
-
-                    var existingData = await LocalStorageService.GetAllDataAsync(restaurantId);
-                    int ingredientsAdded = 0, ingredientsUpdated = 0;
-                    int recipesAdded = 0, recipesUpdated = 0;
-                    int entreesAdded = 0, entreesUpdated = 0;
-
-                    var existingIngredients = existingData.Ingredients.ToDictionary(i => i.Id ?? Guid.NewGuid().ToString());
-                    foreach (var imported in importedData.Ingredients)
-                    {
-                        var key = string.IsNullOrEmpty(imported.Id) ? Guid.NewGuid().ToString() : imported.Id;
-                        if (existingIngredients.ContainsKey(key))
-                        {
-                            existingIngredients[key] = imported;
-                            ingredientsUpdated++;
-                        }
-                        else
-                        {
-                            existingData.Ingredients.Add(imported);
-                            ingredientsAdded++;
-                        }
-                    }
-
-                    var existingRecipes = existingData.Recipes.ToDictionary(r => r.Id ?? Guid.NewGuid().ToString());
-                    foreach (var imported in importedData.Recipes)
-                    {
-                        var key = string.IsNullOrEmpty(imported.Id) ? Guid.NewGuid().ToString() : imported.Id;
-                        if (existingRecipes.ContainsKey(key))
-                        {
-                            existingRecipes[key] = imported;
-                            recipesUpdated++;
-                        }
-                        else
-                        {
-                            existingData.Recipes.Add(imported);
-                            recipesAdded++;
-                        }
-                    }
-
-                    var existingEntrees = existingData.Entrees.ToDictionary(e => e.Id ?? Guid.NewGuid().ToString());
-                    foreach (var imported in importedData.Entrees)
-                    {
-                        var key = string.IsNullOrEmpty(imported.Id) ? Guid.NewGuid().ToString() : imported.Id;
-                        if (existingEntrees.ContainsKey(key))
-                        {
-                            existingEntrees[key] = imported;
-                            entreesUpdated++;
-                        }
-                        else
-                        {
-                            existingData.Entrees.Add(imported);
-                            entreesAdded++;
-                        }
-                    }
-
-                    await LocalStorageService.SaveAllDataAsync(restaurantId, existingData);
-                    await DisplayAlert("Import Complete", $"Data merged successfully:\n" +
-                                                         $"- Ingredients: {ingredientsAdded} added, {ingredientsUpdated} updated.\n" +
-                                                         $"- Recipes: {recipesAdded} added, {recipesUpdated} updated.\n" +
-                                                         $"- Entrees: {entreesAdded} added, {entreesUpdated} updated.", "OK");
+                    var entry = archive.GetEntry(fileName);
+                    if (entry == null) return null;
+                    using var entryStream = entry.Open();
+                    return await JsonSerializer.DeserializeAsync<List<T>>(entryStream);
                 }
+
+                importedData.Ingredients = await ReadFromArchive<IngredientCsvRecord>("ingredients.json") ?? new List<IngredientCsvRecord>();
+                importedData.Recipes = await ReadFromArchive<Recipe>("recipes.json") ?? new List<Recipe>();
+                importedData.Entrees = await ReadFromArchive<Entree>("entrees.json") ?? new List<Entree>();
+
+                var existingData = await LocalStorageService.GetAllDataAsync(restaurantId);
+                var ingredientsToAdd = new List<IngredientCsvRecord>();
+                var recipesToAdd = new List<Recipe>();
+                var entreesToAdd = new List<Entree>();
+
+                // Process Ingredients
+                var existingIngredientIds = new HashSet<string?>(existingData.Ingredients.Select(i => i.Id));
+                foreach (var imported in importedData.Ingredients)
+                {
+                    if (!string.IsNullOrEmpty(imported.Id) && !existingIngredientIds.Contains(imported.Id))
+                    {
+                        ingredientsToAdd.Add(imported);
+                    }
+                }
+                existingData.Ingredients.AddRange(ingredientsToAdd);
+
+                // Process Recipes
+                var existingRecipeIds = new HashSet<string?>(existingData.Recipes.Select(r => r.Id));
+                foreach (var imported in importedData.Recipes)
+                {
+                    if (!string.IsNullOrEmpty(imported.Id) && !existingRecipeIds.Contains(imported.Id))
+                    {
+                        imported.RestaurantId = restaurantId; // Ensure correct restaurant ID
+                        recipesToAdd.Add(imported);
+                    }
+                }
+                existingData.Recipes.AddRange(recipesToAdd);
+
+                // Process Entrees
+                var existingEntreeIds = new HashSet<string?>(existingData.Entrees.Select(e => e.Id));
+                foreach (var imported in importedData.Entrees)
+                {
+                    if (!string.IsNullOrEmpty(imported.Id) && !existingEntreeIds.Contains(imported.Id))
+                    {
+                        imported.RestaurantId = restaurantId; // Ensure correct restaurant ID
+                        entreesToAdd.Add(imported);
+                    }
+                }
+                existingData.Entrees.AddRange(entreesToAdd);
+
+                // Save all changes to local storage first
+                await LocalStorageService.SaveAllDataAsync(restaurantId, existingData);
+
+                // If online, also save the new items to Firestore to prevent them from being overwritten
+                if (!SessionService.IsOffline)
+                {
+                    var db = FirestoreService.Db;
+                    if (db != null)
+                    {
+                        var batch = db.StartBatch();
+
+                        // Add new ingredients to Firestore
+                        var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
+                        foreach (var item in ingredientsToAdd)
+                        {
+                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(ingredientsCollection.Document(item.Id), item);
+                        }
+
+                        // Add new recipes to Firestore
+                        var recipesCollection = db.Collection("recipes");
+                        foreach (var item in recipesToAdd)
+                        {
+                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(recipesCollection.Document(item.Id), item);
+                        }
+
+                        // Add new entrees to Firestore
+                        var entreesCollection = db.Collection("entrees");
+                        foreach (var item in entreesToAdd)
+                        {
+                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(entreesCollection.Document(item.Id), item);
+                        }
+
+                        await batch.CommitAsync();
+                    }
+                }
+
+                await DisplayAlert("Import Complete", $"Data successfully imported to '{restaurantName}':\n\n" +
+                                                     $"- {ingredientsToAdd.Count} new ingredients added.\n" +
+                                                     $"- {recipesToAdd.Count} new recipes added.\n" +
+                                                     $"- {entreesToAdd.Count} new entrees added.", "OK");
+
             }
         }
         catch (Exception ex)
@@ -313,4 +255,3 @@ public partial class SettingsPage : ContentPage
         }
     }
 }
-

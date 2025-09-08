@@ -5,19 +5,20 @@
              x:Class="Freecost.IngredientsPage"
              ControlTemplate="{StaticResource MainPageTemplate}"
              Title="Ingredients">
-    
-    <Grid RowDefinitions="Auto, Auto, Auto, *">
+
+    <Grid RowDefinitions="Auto, Auto, Auto, Auto, *">
         <Label Grid.Row="0" Text="Ingredients" Style="{StaticResource Headline}" Margin="0,20,0,10" />
 
-        <HorizontalStackLayout Grid.Row="1" HorizontalOptions="Center" Spacing="10" Margin="0,0,0,20">
+        <HorizontalStackLayout Grid.Row="1" HorizontalOptions="Center" Spacing="10" Margin="0,0,0,10">
             <Button Text="Add" Clicked="OnAddIngredientClicked" Style="{StaticResource EdgyButtonStyle}" />
             <Button Text="Edit" Clicked="OnEditIngredientClicked" Style="{StaticResource EdgyButtonStyle}" />
             <Button Text="Delete" Clicked="OnDeleteIngredientClicked" Style="{StaticResource EdgyButtonStyle}" />
             <Button Text="Bulk Import" Clicked="OnBulkImportClicked" Style="{StaticResource EdgyButtonStyle}" />
         </HorizontalStackLayout>
 
-        <!-- Header Grid -->
-        <Grid Grid.Row="2" ColumnSpacing="15" Padding="10,0">
+        <SearchBar Grid.Row="2" x:Name="IngredientsSearchBar" Placeholder="Search Ingredients" TextChanged="OnSearchBarTextChanged" Margin="10,0" />
+
+        <Grid Grid.Row="3" ColumnSpacing="15" Padding="10,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*" />
                 <ColumnDefinition Width="2.5*" />
@@ -66,8 +67,7 @@
             <BoxView Grid.ColumnSpan="7" HeightRequest="1" Color="{StaticResource BorderColor}" VerticalOptions="End"/>
         </Grid>
 
-        <!-- Data Grid -->
-        <ScrollView Grid.Row="3">
+        <ScrollView Grid.Row="4">
             <Grid x:Name="IngredientsGrid"
                   ColumnSpacing="15"
                   Padding="10,0">
@@ -84,4 +84,3 @@
         </ScrollView>
     </Grid>
 </ContentPage>
-
