@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 
 namespace Freecost
 {
@@ -19,18 +18,8 @@ namespace Freecost
             }
             else
             {
-                var db = FirestoreService.Db;
-                if (db == null)
-                {
-                    // Handle case where Firestore is not initialized
-                    return;
-                }
-                var snapshot = await db.Collection("unitConversions").GetSnapshotAsync();
-                _conversions = snapshot.Documents.Select(doc => {
-                    var conversion = doc.ConvertTo<UnitConversion>();
-                    conversion.Id = doc.Id;
-                    return conversion;
-                }).ToList();
+                // Use the new service to get the collection. Note that this is a global, public collection.
+                _conversions = await FirestoreService.GetCollectionAsync<UnitConversion>("unitConversions", SessionService.AuthToken);
                 await LocalStorageService.SaveAsync(_conversions);
             }
         }

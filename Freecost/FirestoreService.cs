@@ -1,140 +1,211 @@
-using System;
-using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
-using Google.Cloud.Firestore;
-using Microsoft.Maui.Storage;
-using System.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Freecost
 {
     public static class FirestoreService
     {
-        public static FirestoreDb? Db { get; private set; }
-        public static string FirebaseBucket { get; private set; } = string.Empty;
+        private static readonly HttpClient _httpClient = new();
+        private const string FirebaseProjectId = "gfyfoodcost"; // Your Firebase Project ID
+        private static readonly string _baseApiUrl = $"https://firestore.googleapis.com/v1/projects/{FirebaseProjectId}/databases/(default)/documents";
 
+        public static Task InitializeAsync() => Task.CompletedTask;
 
-        public static async Task InitializeAsync()
+        #region Get Data
+        public static async Task<T?> GetDocumentAsync<T>(string path, string? authToken) where T : class
         {
-            if (Db != null)
+            if (string.IsNullOrEmpty(authToken)) return null;
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseApiUrl}/{path}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+            var jsonString = await response.Content.ReadAsStringAsync();
+            var firestoreDoc = JsonConvert.DeserializeObject<FirestoreDocument>(jsonString);
+            var item = firestoreDoc?.To<T>();
+            if (item != null)
             {
-                return;
-            }
-
-            try
-            {
-                string keyFileName = "new_firebase_credentials.json";
-                using var stream = await FileSystem.OpenAppPackageFileAsync(keyFileName);
-                string tempPath = Path.Combine(FileSystem.AppDataDirectory, keyFileName);
-
-                using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
+                var idProperty = typeof(T).GetProperty("Id");
+                if (idProperty != null && idProperty.CanWrite)
                 {
-                    await stream.CopyToAsync(fileStream);
+                    idProperty.SetValue(item, path.Split('/').Last());
                 }
-
-                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", tempPath);
-                Db = FirestoreDb.Create("gfyfoodcost");
-                FirebaseBucket = "gfyfoodcost.firebasestorage.app";
             }
-            catch (Exception)
-            {
-                throw;
-            }
+            return item;
         }
 
-        public static async Task SyncServerToLocal()
+        public static async Task<List<T>> GetCollectionAsync<T>(string path, string? authToken) where T : class, new()
         {
-            if (Db == null || SessionService.CurrentRestaurant?.Id == null) return;
-            string restaurantId = SessionService.CurrentRestaurant.Id;
+            if (string.IsNullOrEmpty(authToken)) return new List<T>();
+            var list = new List<T>();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseApiUrl}/{path}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return list;
+            var jsonString = await response.Content.ReadAsStringAsync();
+            var firestoreResponse = JsonConvert.DeserializeObject<FirestoreCollection>(jsonString);
+            if (firestoreResponse?.Documents != null)
+            {
+                foreach (var doc in firestoreResponse.Documents)
+                {
+                    var item = doc.To<T>();
+                    if (item != null)
+                    {
+                        var id = doc.Name?.Split('/').LastOrDefault();
+                        var idProperty = typeof(T).GetProperty("Id");
+                        if (idProperty != null && idProperty.CanWrite && id != null)
+                        {
+                            idProperty.SetValue(item, id);
+                        }
+                        list.Add(item);
+                    }
+                }
+            }
+            return list;
+        }
+        #endregion
 
-            var conversionsQuery = Db.Collection("unitConversions");
-            var conversionsSnapshot = await conversionsQuery.GetSnapshotAsync();
-            var conversions = conversionsSnapshot.Documents.Select(doc => doc.ConvertTo<UnitConversion>()).ToList();
-            await LocalStorageService.SaveAsync(conversions);
-
-            // Fetch Ingredients
-            var ingredientsQuery = Db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-            var ingredientsSnapshot = await ingredientsQuery.GetSnapshotAsync();
-            var ingredients = ingredientsSnapshot.Documents.Select(doc => doc.ConvertTo<IngredientCsvRecord>()).ToList();
-            await LocalStorageService.SaveAsync(ingredients, restaurantId);
-
-            // Fetch Recipes
-            var recipesQuery = Db.Collection("recipes").WhereEqualTo("RestaurantId", restaurantId);
-            var recipesSnapshot = await recipesQuery.GetSnapshotAsync();
-            var recipes = recipesSnapshot.Documents.Select(doc => doc.ConvertTo<Recipe>()).ToList();
-            await LocalStorageService.SaveAsync(recipes, restaurantId);
-
-            // Fetch Entrees
-            var entreesQuery = Db.Collection("entrees").WhereEqualTo("RestaurantId", restaurantId);
-            var entreesSnapshot = await entreesQuery.GetSnapshotAsync();
-            var entrees = entreesSnapshot.Documents.Select(doc => doc.ConvertTo<Entree>()).ToList();
-            await LocalStorageService.SaveAsync(entrees, restaurantId);
-
-            // Fetch Import Maps
-            var mapsQuery = Db.Collection("importMaps");
-            var mapsSnapshot = await mapsQuery.GetSnapshotAsync();
-            var maps = mapsSnapshot.Documents.Select(doc => doc.ConvertTo<ImportMap>()).ToList();
-            await LocalStorageService.SaveAsync(maps);
+        #region Save Data
+        public static async Task<bool> AddDocumentAsync<T>(string collectionPath, T data, string? authToken) where T : class
+        {
+            if (string.IsNullOrEmpty(authToken)) return false;
+            var firestoreDoc = FirestoreDocument.From(data);
+            var jsonPayload = JsonConvert.SerializeObject(firestoreDoc, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseApiUrl}/{collectionPath}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            request.Content = content;
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
         }
 
-        public static async Task SyncLocalToServer()
+        public static async Task<bool> SetDocumentAsync<T>(string documentPath, T data, string? authToken) where T : class
         {
-            if (Db == null || SessionService.CurrentRestaurant?.Id == null) return;
-            string restaurantId = SessionService.CurrentRestaurant.Id;
+            if (string.IsNullOrEmpty(authToken)) return false;
+            var firestoreDoc = FirestoreDocument.From(data);
+            var jsonPayload = JsonConvert.SerializeObject(firestoreDoc, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"{_baseApiUrl}/{documentPath}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            request.Content = content;
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+        #endregion
 
-            var localConversions = await LocalStorageService.LoadAsync<UnitConversion>();
-            var conversionsCollection = Db.Collection("unitConversions");
-            foreach (var item in localConversions)
+        #region Delete Data
+        public static async Task<bool> DeleteDocumentAsync(string documentPath, string? authToken)
+        {
+            if (string.IsNullOrEmpty(authToken)) return false;
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"{_baseApiUrl}/{documentPath}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+        #endregion
+
+        #region Helper Classes
+        private class FirestoreCollection
+        {
+            public List<FirestoreDocument>? Documents { get; set; }
+        }
+
+        private class FirestoreDocument
+        {
+            public string? Name { get; set; }
+            public JObject? Fields { get; set; }
+
+            public T? To<T>() where T : class
             {
-                if (string.IsNullOrEmpty(item.Id))
+                if (Fields == null) return null;
+                var obj = new JObject();
+                foreach (var prop in Fields.Properties())
                 {
-                    await conversionsCollection.AddAsync(item);
+                    obj.Add(prop.Name, UnwrapFirestoreValue(prop.Value));
                 }
-                else
+                return obj.ToObject<T>();
+            }
+
+            private JToken? UnwrapFirestoreValue(JToken token)
+            {
+                if (token is not JObject valueWrapper) return null;
+                var typeKey = valueWrapper.Properties().FirstOrDefault()?.Name;
+                var rawValue = valueWrapper.Properties().FirstOrDefault()?.Value;
+
+                switch (typeKey)
                 {
-                    await conversionsCollection.Document(item.Id).SetAsync(item, SetOptions.MergeAll);
+                    case "mapValue":
+                        var mapFields = rawValue?["fields"];
+                        if (mapFields is JObject jObjectFields)
+                        {
+                            var netObj = new JObject();
+                            foreach (var fieldProp in jObjectFields.Properties())
+                            {
+                                netObj.Add(fieldProp.Name, UnwrapFirestoreValue(fieldProp.Value));
+                            }
+                            return netObj;
+                        }
+                        return new JObject();
+
+                    case "arrayValue":
+                        var arrayValues = rawValue?["values"];
+                        if (arrayValues is JArray jArray)
+                        {
+                            var netArray = new JArray();
+                            foreach (var item in jArray)
+                            {
+                                netArray.Add(UnwrapFirestoreValue(item));
+                            }
+                            return netArray;
+                        }
+                        return new JArray();
+                    default:
+                        return rawValue;
                 }
             }
 
-            var allLocalData = await LocalStorageService.GetAllDataAsync(restaurantId);
-
-            var ingredientsCollection = Db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-            foreach (var item in allLocalData.Ingredients)
+            public static FirestoreDocument From<T>(T data) where T : class
             {
-                if (string.IsNullOrEmpty(item.Id))
+                var jsonData = JObject.FromObject(data, new JsonSerializer { NullValueHandling = NullValueHandling.Ignore });
+                var fields = new JObject();
+                foreach (var prop in jsonData.Properties())
                 {
-                    await ingredientsCollection.AddAsync(item);
+                    if (prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)) continue;
+                    fields.Add(prop.Name, WrapFirestoreValue(prop.Value));
                 }
-                else
-                {
-                    await ingredientsCollection.Document(item.Id).SetAsync(item, SetOptions.MergeAll);
-                }
+                return new FirestoreDocument { Fields = fields };
             }
 
-            var recipesCollection = Db.Collection("recipes");
-            foreach (var item in allLocalData.Recipes)
+            private static JObject WrapFirestoreValue(JToken? value)
             {
-                if (string.IsNullOrEmpty(item.Id))
+                if (value == null) return new JObject { { "nullValue", null } };
+                switch (value.Type)
                 {
-                    await recipesCollection.AddAsync(item);
+                    case JTokenType.String:
+                        return new JObject { { "stringValue", value } };
+                    case JTokenType.Float:
+                    case JTokenType.Integer:
+                        return new JObject { { "doubleValue", value } };
+                    case JTokenType.Boolean:
+                        return new JObject { { "booleanValue", value } };
+                    case JTokenType.Array:
+                        var arrayValues = ((JArray)value).Select(WrapFirestoreValue);
+                        return new JObject { { "arrayValue", new JObject { { "values", new JArray(arrayValues) } } } };
+                    case JTokenType.Object:
+                        var mapValues = new JObject();
+                        foreach (var mapProp in ((JObject)value).Properties())
+                        {
+                            mapValues.Add(mapProp.Name, WrapFirestoreValue(mapProp.Value));
+                        }
+                        return new JObject { { "mapValue", new JObject { { "fields", mapValues } } } };
+                    default:
+                        return new JObject { { "stringValue", value.ToString() } };
                 }
-                else
-                {
-                    await recipesCollection.Document(item.Id).SetAsync(item, SetOptions.MergeAll);
-                }
-            }
-            var entreesCollection = Db.Collection("entrees");
-            foreach (var item in allLocalData.Entrees)
-            {
-                if (string.IsNullOrEmpty(item.Id)) await entreesCollection.AddAsync(item);
-                else await entreesCollection.Document(item.Id).SetAsync(item, SetOptions.MergeAll);
-            }
-
-            var mapsCollection = Db.Collection("importMaps");
-            foreach (var item in allLocalData.ImportMaps)
-            {
-                if (string.IsNullOrEmpty(item.Id)) await mapsCollection.AddAsync(item);
-                else await mapsCollection.Document(item.Id).SetAsync(item, SetOptions.MergeAll);
             }
         }
+        #endregion
     }
 }

@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace Freecost
 {
@@ -14,46 +13,37 @@ namespace Freecost
         public EntreeComponent? SelectedComponent
         {
             get => _selectedComponent;
-            set
-            {
-                _selectedComponent = value;
-                OnPropertyChanged();
-            }
+            set { _selectedComponent = value; OnPropertyChanged(); }
         }
+
         public class AllergenSelection
         {
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
             public bool IsSelected { get; set; }
-
-            public AllergenSelection()
-            {
-                Name = string.Empty;
-            }
         }
 
         public Entree EntreeData { get; private set; }
         public List<EntreeComponent> EntreeComponents { get; private set; }
 
-        private string restaurantId;
-        private FirestoreDb? db = FirestoreService.Db;
-        private List<IngredientCsvRecord>? masterIngredientList;
-        private List<string> topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
-        private List<AllergenSelection> Allergens { get; set; }
+        private readonly string _restaurantId;
+        private List<IngredientCsvRecord>? _masterIngredientList;
+        private List<AllergenSelection> _allergens;
         private string? _uploadedPhotoUrl;
 
         public AddEntreePage(string currentRestaurantId, Entree? entreeToEdit = null)
         {
             InitializeComponent();
             BindingContext = this;
-            restaurantId = currentRestaurantId;
+            _restaurantId = currentRestaurantId;
 
             EntreeData = entreeToEdit ?? new Entree();
             _uploadedPhotoUrl = EntreeData.PhotoUrl;
             EntreeComponents = entreeToEdit?.Components ?? new List<EntreeComponent>();
 
-            Allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = EntreeData.Allergens?.Contains(a) ?? false }).ToList();
+            var topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
+            _allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = EntreeData.Allergens?.Contains(a) ?? false }).ToList();
 
-            foreach (var allergen in Allergens)
+            foreach (var allergen in _allergens)
             {
                 var chip = new Button { Text = allergen.Name };
                 if (Application.Current?.Resources != null)
@@ -96,7 +86,191 @@ namespace Freecost
         {
             base.OnAppearing();
             await LoadMasterIngredients();
+        }
+
+        private async void OnYieldChanged(object sender, EventArgs e)
+        {
             await UpdateCostingSummary();
+        }
+
+        private async Task LoadMasterIngredients()
+        {
+            if (SessionService.IsOffline)
+            {
+                _masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(_restaurantId);
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(_restaurantId)) return;
+                _masterIngredientList = await FirestoreService.GetCollectionAsync<IngredientCsvRecord>(
+                    $"restaurants/{_restaurantId}/ingredients", SessionService.AuthToken);
+            }
+
+            if (_masterIngredientList == null) return;
+            var displayList = _masterIngredientList.Select(ing => new EntreeComponentDisplay
+            {
+                DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : ing.ItemName ?? string.Empty,
+                OriginalIngredient = ing
+            }).OrderBy(d => d.DisplayName).ToList();
+            ComponentPicker.ItemsSource = displayList;
+            ComponentPicker.ItemDisplayBinding = new Binding("DisplayName");
+        }
+
+        private async Task UpdateCostingSummary()
+        {
+            if (_masterIngredientList == null)
+            {
+                await LoadMasterIngredients();
+            }
+
+            double totalCost = 0;
+            if (_masterIngredientList != null)
+            {
+                foreach (var entreeComponent in EntreeComponents)
+                {
+                    var masterIngredient = _masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
+                    if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
+                    {
+                        try
+                        {
+                            totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
+                        }
+                        catch (ArgumentException) { /* Ignore for live summary */ }
+                    }
+                }
+            }
+
+            TotalCostLabel.Text = totalCost.ToString("C");
+            EntreeData.FoodCost = totalCost;
+
+            double.TryParse(PlatePriceEntry.Text, out double platePrice);
+            double foodCostPercentage = (platePrice > 0) ? (totalCost / platePrice) : 0;
+            FoodCostPercentageLabel.Text = foodCostPercentage.ToString("P2");
+            EntreeData.Price = foodCostPercentage;
+        }
+
+        private async void OnSaveClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                double.TryParse(YieldEntry.Text, out double yield);
+                if (yield == 0) yield = 1;
+                double.TryParse(PlatePriceEntry.Text, out double platePrice);
+
+                EntreeData.Name = EntreeNameEntry.Text;
+                EntreeData.Yield = yield;
+                EntreeData.PlatePrice = platePrice;
+                EntreeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
+                EntreeData.Directions = DirectionsEditor.Text;
+                EntreeData.Components = EntreeComponents;
+                EntreeData.RestaurantId = _restaurantId;
+                EntreeData.Allergens = _allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
+                EntreeData.PhotoUrl = _uploadedPhotoUrl;
+
+                await UpdateCostingSummary();
+
+                if (SessionService.IsOffline)
+                {
+                    var entrees = await LocalStorageService.LoadAsync<Entree>(_restaurantId);
+                    if (string.IsNullOrEmpty(EntreeData.Id))
+                    {
+                        EntreeData.Id = Guid.NewGuid().ToString();
+                        entrees.Add(EntreeData);
+                    }
+                    else
+                    {
+                        var existing = entrees.FirstOrDefault(e => e.Id == EntreeData.Id);
+                        if (existing != null) entrees[entrees.IndexOf(existing)] = EntreeData;
+                        else entrees.Add(EntreeData);
+                    }
+                    await LocalStorageService.SaveAsync(entrees, _restaurantId);
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(EntreeData.Id))
+                    {
+                        await FirestoreService.AddDocumentAsync("entrees", EntreeData, SessionService.AuthToken);
+                    }
+                    else
+                    {
+                        await FirestoreService.SetDocumentAsync($"entrees/{EntreeData.Id}", EntreeData, SessionService.AuthToken);
+                    }
+                }
+
+                await Navigation.PopAsync();
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"An unexpected error occurred while saving: {ex.Message}", "OK");
+            }
+        }
+
+        private async void OnAddComponentClicked(object sender, EventArgs e)
+        {
+            if (ComponentPicker.SelectedItem == null) { return; }
+            if (!double.TryParse(QuantityEntry.Text, out double quantity) || quantity <= 0) { return; }
+            if (UnitPicker.SelectedItem == null)
+            {
+                await DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
+                return;
+            }
+
+            var selectedComponentDisplay = ComponentPicker.SelectedItem as EntreeComponentDisplay;
+            if (selectedComponentDisplay?.OriginalIngredient == null) return;
+            var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
+            var componentToAdd = new EntreeComponent
+            {
+                ComponentId = selectedMasterIngredient.Id,
+                Name = !string.IsNullOrEmpty(selectedMasterIngredient.AliasName) ? selectedMasterIngredient.AliasName : selectedMasterIngredient.ItemName ?? string.Empty,
+                Quantity = quantity,
+                Unit = UnitPicker.SelectedItem.ToString(),
+                DisplayQuantity = double.TryParse(DisplayQuantityEntry.Text, out double displayQuantity) ? displayQuantity : quantity,
+                DisplayUnit = DisplayUnitPicker.SelectedItem?.ToString() ?? UnitPicker.SelectedItem.ToString()
+            };
+            EntreeComponents.Add(componentToAdd);
+            RefreshComponentsGrid();
+            await UpdateCostingSummary();
+        }
+
+        private async void OnDeleteComponentClicked(object sender, EventArgs e)
+        {
+            if (SelectedComponent == null)
+            {
+                await DisplayAlert("No Selection", "Please select a component to delete.", "OK");
+                return;
+            }
+
+            bool answer = await DisplayAlert("Confirm", $"Are you sure you want to delete {SelectedComponent.Name}?", "Yes", "No");
+            if (answer)
+            {
+                EntreeComponents.Remove(SelectedComponent);
+                RefreshComponentsGrid();
+                await UpdateCostingSummary();
+            }
+        }
+
+        private async void OnEditComponentClicked(object sender, EventArgs e)
+        {
+            if (SelectedComponent == null)
+            {
+                await DisplayAlert("No Selection", "Please select a component to edit.", "OK");
+                return;
+            }
+            var componentToEdit = SelectedComponent;
+            var componentDisplay = ComponentPicker.ItemsSource.Cast<EntreeComponentDisplay>().FirstOrDefault(i => i.OriginalIngredient?.Id == componentToEdit.ComponentId);
+            if (componentDisplay != null) ComponentPicker.SelectedItem = componentDisplay;
+            QuantityEntry.Text = componentToEdit.Quantity.ToString();
+            UnitPicker.SelectedItem = componentToEdit.Unit;
+            DisplayQuantityEntry.Text = componentToEdit.DisplayQuantity.ToString();
+            DisplayUnitPicker.SelectedItem = componentToEdit.DisplayUnit;
+            EntreeComponents.Remove(componentToEdit);
+            RefreshComponentsGrid();
+        }
+
+        private void RefreshComponentsGrid()
+        {
+            ComponentsCollection.ItemsSource = null;
+            ComponentsCollection.ItemsSource = new List<EntreeComponent>(EntreeComponents);
         }
 
         private void OnComponentSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -113,58 +287,9 @@ namespace Freecost
             }
         }
 
-        private async void OnYieldChanged(object sender, EventArgs e)
-        {
-            await UpdateCostingSummary();
-        }
-
-        private async Task UpdateCostingSummary()
-        {
-            if (masterIngredientList == null)
-            {
-                await LoadMasterIngredients();
-            }
-
-            double totalCost = 0;
-            if (masterIngredientList != null)
-            {
-                foreach (var entreeComponent in EntreeComponents)
-                {
-                    var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
-                    if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
-                    {
-                        try
-                        {
-                            totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
-                        }
-                        catch (ArgumentException)
-                        {
-                            // Ignore for live summary
-                        }
-                    }
-                }
-            }
-
-            TotalCostLabel.Text = totalCost.ToString("C");
-
-            double.TryParse(PlatePriceEntry.Text, out double platePrice);
-            double foodCostPercentage = (platePrice > 0) ? (totalCost / platePrice) : 0;
-            FoodCostPercentageLabel.Text = foodCostPercentage.ToString("P2");
-        }
-
-        private void OnDirectionsEditorTextChanged(object? sender, TextChangedEventArgs e)
-        {
-            if (sender is Editor editor && editor.Text.Contains(Environment.NewLine))
-            {
-                editor.Text = editor.Text.Replace(Environment.NewLine, "");
-                OnAddStepClicked(this, EventArgs.Empty);
-            }
-        }
-
         private async void OnUploadImageClicked(object sender, EventArgs e)
         {
-            await AuthService.RefreshAuthTokenIfNeededAsync(); // Added token refresh
-
+            await AuthService.RefreshAuthTokenIfNeededAsync();
             try
             {
                 var result = await FilePicker.PickAsync(new PickOptions { PickerTitle = "Please select an image file", FileTypes = FilePickerFileType.Images });
@@ -208,120 +333,21 @@ namespace Freecost
             DirectionsEditor.TextChanged += OnDirectionsEditorTextChanged;
         }
 
+        private void OnDirectionsEditorTextChanged(object? sender, TextChangedEventArgs e)
+        {
+            if (sender is Editor editor && editor.Text.Contains(Environment.NewLine))
+            {
+                editor.Text = editor.Text.Replace(Environment.NewLine, "");
+                OnAddStepClicked(this, EventArgs.Empty);
+            }
+        }
+
         private void LoadUnitDropdowns()
         {
             var allUnits = UnitConverter.GetAllUnitNames();
             UnitPicker.ItemsSource = new List<string>(allUnits);
             DisplayUnitPicker.ItemsSource = new List<string>(allUnits);
             YieldUnitPicker.ItemsSource = new List<string>(allUnits);
-        }
-        private async void OnSaveClicked(object sender, EventArgs e)
-        {
-            try
-            {
-                if (EntreeData == null) EntreeData = new Entree();
-                double.TryParse(YieldEntry.Text, out double yield);
-                if (yield == 0) yield = 1;
-                double.TryParse(PlatePriceEntry.Text, out double platePrice);
-                EntreeData.Name = EntreeNameEntry.Text;
-                EntreeData.Yield = yield;
-                EntreeData.PlatePrice = platePrice;
-                EntreeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
-                EntreeData.Directions = DirectionsEditor.Text;
-                EntreeData.Components = EntreeComponents;
-                EntreeData.RestaurantId = restaurantId;
-                EntreeData.Allergens = Allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
-                EntreeData.PhotoUrl = _uploadedPhotoUrl;
-
-                double totalCost = 0;
-                if (masterIngredientList != null)
-                {
-                    foreach (var entreeComponent in EntreeComponents)
-                    {
-                        var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
-                        if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
-                        {
-                            totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
-                        }
-                    }
-                }
-                EntreeData.FoodCost = totalCost;
-                if (platePrice > 0) EntreeData.Price = totalCost / platePrice;
-                else EntreeData.Price = 0;
-
-                if (SessionService.IsOffline)
-                {
-                    var entrees = await LocalStorageService.LoadAsync<Entree>(restaurantId);
-                    if (string.IsNullOrEmpty(EntreeData.Id))
-                    {
-                        EntreeData.Id = Guid.NewGuid().ToString();
-                        entrees.Add(EntreeData);
-                    }
-                    else
-                    {
-                        var existing = entrees.FirstOrDefault(e => e.Id == EntreeData.Id);
-                        if (existing != null)
-                        {
-                            var index = entrees.IndexOf(existing);
-                            entrees[index] = EntreeData;
-                        }
-                        else
-                        {
-                            entrees.Add(EntreeData);
-                        }
-                    }
-                    await LocalStorageService.SaveAsync(entrees, restaurantId);
-                }
-                else
-                {
-                    db = FirestoreService.Db;
-                    if (db == null || restaurantId == null) return;
-                    var collection = db.Collection("entrees");
-                    if (string.IsNullOrEmpty(EntreeData.Id))
-                    {
-                        await collection.AddAsync(EntreeData);
-                    }
-                    else
-                    {
-                        await collection.Document(EntreeData.Id).SetAsync(EntreeData, SetOptions.Overwrite);
-                    }
-                }
-
-                await Navigation.PopAsync();
-            }
-            catch (Exception ex)
-            {
-                await DisplayAlert("Error", $"An unexpected error occurred while saving: {ex.Message}", "OK");
-            }
-        }
-
-        private async Task LoadMasterIngredients()
-        {
-            if (SessionService.IsOffline)
-            {
-                masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>();
-            }
-            else
-            {
-                db = FirestoreService.Db;
-                if (db == null || restaurantId == null) return;
-                var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-                var snapshot = await ingredientsCollection.GetSnapshotAsync();
-                masterIngredientList = snapshot.Documents.Select(doc => {
-                    var ing = doc.ConvertTo<IngredientCsvRecord>();
-                    ing.Id = doc.Id;
-                    return ing;
-                }).ToList();
-            }
-
-            if (masterIngredientList == null) return;
-            var displayList = masterIngredientList.Select(ing => new EntreeComponentDisplay
-            {
-                DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : ing.ItemName ?? string.Empty,
-                OriginalIngredient = ing
-            }).OrderBy(d => d.DisplayName).ToList();
-            ComponentPicker.ItemsSource = displayList;
-            ComponentPicker.ItemDisplayBinding = new Binding("DisplayName");
         }
 
         private void OnComponentPicker_SelectedIndexChanged(object sender, EventArgs e)
@@ -338,73 +364,6 @@ namespace Freecost
                     }
                 }
             }
-        }
-
-        private async void OnAddComponentClicked(object sender, EventArgs e)
-        {
-            if (ComponentPicker.SelectedItem == null) { return; }
-            if (!double.TryParse(QuantityEntry.Text, out double quantity) || quantity <= 0) { return; }
-            if (UnitPicker.SelectedItem == null)
-            {
-                await DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
-                return;
-            }
-
-            var selectedComponentDisplay = ComponentPicker.SelectedItem as EntreeComponentDisplay;
-            if (selectedComponentDisplay?.OriginalIngredient == null) return;
-            var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
-            var componentToAdd = new EntreeComponent
-            {
-                ComponentId = selectedMasterIngredient.Id,
-                Name = !string.IsNullOrEmpty(selectedMasterIngredient.AliasName) ? selectedMasterIngredient.AliasName : selectedMasterIngredient.ItemName ?? string.Empty,
-                Quantity = quantity,
-                Unit = UnitPicker.SelectedItem.ToString(),
-                DisplayQuantity = double.TryParse(DisplayQuantityEntry.Text, out double displayQuantity) ? displayQuantity : quantity,
-                DisplayUnit = DisplayUnitPicker.SelectedItem?.ToString() ?? UnitPicker.SelectedItem.ToString()
-            };
-            EntreeComponents.Add(componentToAdd);
-            await RefreshComponentsGrid();
-        }
-
-        private async void OnDeleteComponentClicked(object sender, EventArgs e)
-        {
-            if (SelectedComponent == null)
-            {
-                await DisplayAlert("No Selection", "Please select an component to delete.", "OK");
-                return;
-            }
-
-            bool answer = await DisplayAlert("Confirm", $"Are you sure you want to delete {SelectedComponent.Name}?", "Yes", "No");
-            if (answer)
-            {
-                EntreeComponents.Remove(SelectedComponent);
-                await RefreshComponentsGrid();
-            }
-        }
-
-        private async void OnEditComponentClicked(object sender, EventArgs e)
-        {
-            if (SelectedComponent == null)
-            {
-                await DisplayAlert("No Selection", "Please select a component to edit.", "OK");
-                return;
-            }
-            var componentToEdit = SelectedComponent;
-            var componentDisplay = ComponentPicker.ItemsSource.Cast<EntreeComponentDisplay>().FirstOrDefault(i => i.OriginalIngredient?.Id == componentToEdit.ComponentId);
-            if (componentDisplay != null) ComponentPicker.SelectedItem = componentDisplay;
-            QuantityEntry.Text = componentToEdit.Quantity.ToString();
-            UnitPicker.SelectedItem = componentToEdit.Unit;
-            DisplayQuantityEntry.Text = componentToEdit.DisplayQuantity.ToString();
-            DisplayUnitPicker.SelectedItem = componentToEdit.DisplayUnit;
-            EntreeComponents.Remove(componentToEdit);
-            await RefreshComponentsGrid();
-        }
-
-        private async Task RefreshComponentsGrid()
-        {
-            ComponentsCollection.ItemsSource = null;
-            ComponentsCollection.ItemsSource = new List<EntreeComponent>(EntreeComponents);
-            await UpdateCostingSummary();
         }
 
         private async void OnCancelClicked(object sender, EventArgs e)

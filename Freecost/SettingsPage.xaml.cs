@@ -4,7 +4,6 @@ using System.IO;
 using System.IO.Compression;
 using CommunityToolkit.Maui.Storage;
 using System.Linq;
-using Google.Cloud.Firestore;
 
 namespace Freecost;
 
@@ -41,17 +40,26 @@ public partial class SettingsPage : ContentPage
 
     private async void OnSyncClicked(object sender, EventArgs e)
     {
-        if (SessionService.IsOffline || SessionService.CurrentRestaurant == null)
+        var restaurantId = SessionService.CurrentRestaurant?.Id;
+        if (SessionService.IsOffline || restaurantId == null)
         {
             await DisplayAlert("Sync Unavailable", "You must be online and have a location selected to sync.", "OK");
             return;
         }
 
-        await DisplayAlert("Syncing", "Syncing local data to the server. This may take a moment.", "OK");
-        await FirestoreService.SyncLocalToServer();
-        await DisplayAlert("Syncing", "Syncing server data to local. This may take a moment.", "OK");
-        await FirestoreService.SyncServerToLocal();
+        await DisplayAlert("Syncing", "Downloading latest data from the server. This may take a moment.", "OK");
 
+        // This simplified sync re-downloads all data from the server, overwriting local copies for this restaurant.
+        var ingredients = await FirestoreService.GetCollectionAsync<IngredientCsvRecord>($"restaurants/{restaurantId}/ingredients", SessionService.AuthToken);
+        await LocalStorageService.SaveAsync(ingredients, restaurantId);
+
+        var allRecipes = await FirestoreService.GetCollectionAsync<Recipe>("recipes", SessionService.AuthToken);
+        var recipes = allRecipes.Where(r => r.RestaurantId == restaurantId).ToList();
+        await LocalStorageService.SaveAsync(recipes, restaurantId);
+
+        var allEntrees = await FirestoreService.GetCollectionAsync<Entree>("entrees", SessionService.AuthToken);
+        var entrees = allEntrees.Where(e => e.RestaurantId == restaurantId).ToList();
+        await LocalStorageService.SaveAsync(entrees, restaurantId);
 
         await DisplayAlert("Sync Complete", "Your local data has been synced with the server.", "OK");
     }
@@ -74,7 +82,7 @@ public partial class SettingsPage : ContentPage
             {
                 var entry = archive.CreateEntry(fileName);
                 using var entryStream = entry.Open();
-                await JsonSerializer.SerializeAsync(entryStream, data, new JsonSerializerOptions { WriteIndented = true });
+                await System.Text.Json.JsonSerializer.SerializeAsync(entryStream, data, new JsonSerializerOptions { WriteIndented = true });
             }
 
             await AddToArchive(allData.Ingredients, "ingredients.json");
@@ -96,7 +104,7 @@ public partial class SettingsPage : ContentPage
 
         if (currentRestaurant == null || string.IsNullOrEmpty(currentRestaurant.Id))
         {
-            await DisplayAlert("No Location Selected", "Please use the main menu to change your location before importing data.", "OK");
+            await DisplayAlert("No Location Selected", "Please select a location before importing data.", "OK");
             return;
         }
 
@@ -127,7 +135,7 @@ public partial class SettingsPage : ContentPage
                     var entry = archive.GetEntry(fileName);
                     if (entry == null) return null;
                     using var entryStream = entry.Open();
-                    return await JsonSerializer.DeserializeAsync<List<T>>(entryStream);
+                    return await System.Text.Json.JsonSerializer.DeserializeAsync<List<T>>(entryStream);
                 }
 
                 importedData.Ingredients = await ReadFromArchive<IngredientCsvRecord>("ingredients.json") ?? new List<IngredientCsvRecord>();
@@ -177,36 +185,23 @@ public partial class SettingsPage : ContentPage
                 // Save all changes to local storage first
                 await LocalStorageService.SaveAllDataAsync(restaurantId, existingData);
 
-                // If online, also save the new items to Firestore to prevent them from being overwritten
+                // If online, also save the new items to Firestore
                 if (!SessionService.IsOffline)
                 {
-                    var db = FirestoreService.Db;
-                    if (db != null)
+                    foreach (var item in ingredientsToAdd)
                     {
-                        var batch = db.StartBatch();
-
-                        // Add new ingredients to Firestore
-                        var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-                        foreach (var item in ingredientsToAdd)
-                        {
-                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(ingredientsCollection.Document(item.Id), item);
-                        }
-
-                        // Add new recipes to Firestore
-                        var recipesCollection = db.Collection("recipes");
-                        foreach (var item in recipesToAdd)
-                        {
-                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(recipesCollection.Document(item.Id), item);
-                        }
-
-                        // Add new entrees to Firestore
-                        var entreesCollection = db.Collection("entrees");
-                        foreach (var item in entreesToAdd)
-                        {
-                            if (!string.IsNullOrEmpty(item.Id)) batch.Set(entreesCollection.Document(item.Id), item);
-                        }
-
-                        await batch.CommitAsync();
+                        if (!string.IsNullOrEmpty(item.Id))
+                            await FirestoreService.SetDocumentAsync($"restaurants/{restaurantId}/ingredients/{item.Id}", item, SessionService.AuthToken);
+                    }
+                    foreach (var item in recipesToAdd)
+                    {
+                        if (!string.IsNullOrEmpty(item.Id))
+                            await FirestoreService.SetDocumentAsync($"recipes/{item.Id}", item, SessionService.AuthToken);
+                    }
+                    foreach (var item in entreesToAdd)
+                    {
+                        if (!string.IsNullOrEmpty(item.Id))
+                            await FirestoreService.SetDocumentAsync($"entrees/{item.Id}", item, SessionService.AuthToken);
                     }
                 }
 
@@ -214,7 +209,6 @@ public partial class SettingsPage : ContentPage
                                                      $"- {ingredientsToAdd.Count} new ingredients added.\n" +
                                                      $"- {recipesToAdd.Count} new recipes added.\n" +
                                                      $"- {entreesToAdd.Count} new entrees added.", "OK");
-
             }
         }
         catch (Exception ex)
@@ -222,7 +216,6 @@ public partial class SettingsPage : ContentPage
             await DisplayAlert("Import Error", $"An error occurred during import: {ex.Message}", "OK");
         }
     }
-
 
     private async void OnBuyMeACoffeeClicked(object sender, EventArgs e)
     {

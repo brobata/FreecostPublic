@@ -7,7 +7,6 @@ using System.Web;
 using CsvHelper;
 using Microsoft.Maui.Storage;
 using OfficeOpenXml;
-using Google.Cloud.Firestore;
 using System.Text.Json;
 using CommunityToolkit.Maui.Storage;
 
@@ -15,7 +14,6 @@ namespace Freecost;
 
 public partial class ImportMapManagerPage : ContentPage
 {
-    private FirestoreDb? db;
     private List<ImportMap> maps = new List<ImportMap>();
 
     public ImportMapManagerPage()
@@ -37,10 +35,7 @@ public partial class ImportMapManagerPage : ContentPage
         }
         else
         {
-            db = FirestoreService.Db;
-            if (db == null) return;
-            var snapshot = await db.Collection("importMaps").GetSnapshotAsync();
-            maps = snapshot.Documents.Select(doc => doc.ConvertTo<ImportMap>()).ToList();
+            maps = await FirestoreService.GetCollectionAsync<ImportMap>("importMaps", SessionService.AuthToken);
         }
         MapsListView.ItemsSource = maps;
     }
@@ -57,9 +52,6 @@ public partial class ImportMapManagerPage : ContentPage
                     {
                         { DevicePlatform.WinUI, new[] { ".csv", ".xlsx" } },
                         { DevicePlatform.macOS, new[] { "csv", "xlsx" } },
-                        { DevicePlatform.Android, new[] { "text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } },
-                        { DevicePlatform.iOS, new[] { "public.comma-separated-values-text", "org.openxmlformats.spreadsheetml.sheet" } },
-                        { DevicePlatform.Tizen, new[] { "*/*" } },
                     })
             });
 
@@ -126,10 +118,9 @@ public partial class ImportMapManagerPage : ContentPage
                     }
                     else
                     {
-                        db = FirestoreService.Db;
-                        if (db != null && map.Id != null)
+                        if (map.Id != null)
                         {
-                            await db.Collection("importMaps").Document(map.Id).DeleteAsync();
+                            await FirestoreService.DeleteDocumentAsync($"importMaps/{map.Id}", SessionService.AuthToken);
                         }
                     }
                     await LoadMaps();
@@ -154,6 +145,7 @@ public partial class ImportMapManagerPage : ContentPage
             }
         }
     }
+    
 
     private async void OnExportMapsClicked(object sender, EventArgs e)
     {

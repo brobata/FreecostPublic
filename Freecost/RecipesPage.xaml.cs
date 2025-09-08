@@ -1,4 +1,3 @@
-using Google.Cloud.Firestore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,7 +8,6 @@ namespace Freecost
 {
     public partial class RecipesPage : ContentPage
     {
-        private FirestoreDb? db;
         private string? restaurantId;
         private List<RecipeDisplayRecord> _allRecipes = new List<RecipeDisplayRecord>();
         private RecipeDisplayRecord? _selectedRecipe;
@@ -88,31 +86,26 @@ namespace Freecost
             }
             else
             {
-                db = FirestoreService.Db;
-                if (db == null) return;
+                // This will need to be a more complex query using the REST API if you filter by restaurantId on the server
+                // For now, we get all and filter locally.
+                var allRecipes = await FirestoreService.GetCollectionAsync<Recipe>("recipes", SessionService.AuthToken);
+                var restaurantRecipes = allRecipes.Where(r => r.RestaurantId == restaurantId).ToList();
 
-                recipes = new List<RecipeDisplayRecord>();
-                var query = db.Collection("recipes").WhereEqualTo("RestaurantId", restaurantId);
-                var snapshot = await query.GetSnapshotAsync();
-
-                recipes = snapshot.Documents.Select(document =>
+                recipes = restaurantRecipes.Select(r => new RecipeDisplayRecord
                 {
-                    var recipe = document.ConvertTo<Recipe>();
-                    return new RecipeDisplayRecord
-                    {
-                        Id = document.Id,
-                        Name = recipe.Name,
-                        Yield = recipe.Yield,
-                        YieldUnit = recipe.YieldUnit,
-                        Directions = recipe.Directions,
-                        PhotoUrl = recipe.PhotoUrl,
-                        RestaurantId = recipe.RestaurantId,
-                        Allergens = recipe.Allergens,
-                        Ingredients = recipe.Ingredients,
-                        FoodCost = recipe.FoodCost,
-                        Price = recipe.Price
-                    };
+                    Id = r.Id,
+                    Name = r.Name,
+                    Yield = r.Yield,
+                    YieldUnit = r.YieldUnit,
+                    Directions = r.Directions,
+                    PhotoUrl = r.PhotoUrl,
+                    RestaurantId = r.RestaurantId,
+                    Allergens = r.Allergens,
+                    Ingredients = r.Ingredients,
+                    FoodCost = r.FoodCost,
+                    Price = r.Price
                 }).ToList();
+
                 await LocalStorageService.SaveAsync(recipes.Cast<Recipe>().ToList(), restaurantId);
             }
             _allRecipes = recipes;
@@ -147,53 +140,49 @@ namespace Freecost
             bool answer = await DisplayAlert("Confirm Delete", $"Are you sure you want to delete {_selectedRecipe.Name}?", "Yes", "No");
             if (answer)
             {
-                if (db == null || restaurantId == null || _selectedRecipe.Id == null) return;
-                await db.Collection("recipes").Document(_selectedRecipe.Id).DeleteAsync();
-                LoadData();
+                if (restaurantId == null || _selectedRecipe.Id == null) return;
+
+                if (SessionService.IsOffline)
+                {
+                    var localRecipes = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
+                    localRecipes.RemoveAll(r => r.Id == _selectedRecipe.Id);
+                    await LocalStorageService.SaveAsync(localRecipes, restaurantId);
+                }
+                else
+                {
+                    await FirestoreService.DeleteDocumentAsync($"recipes/{_selectedRecipe.Id}", SessionService.AuthToken);
+                }
+
+                await LoadRecipes();
             }
         }
 
         private void OnRecipeSelected(object sender, SelectedItemChangedEventArgs e)
         {
-            // First, un-select the previously selected item if it exists
             if (_selectedRecipe != null)
             {
                 _selectedRecipe.IsSelected = false;
             }
 
-            // Get the newly selected item
             _selectedRecipe = e.SelectedItem as RecipeDisplayRecord;
 
             if (_selectedRecipe != null)
             {
-                // Set the IsSelected property to true to trigger the highlight
                 _selectedRecipe.IsSelected = true;
-
-                // The rest of your logic to display details
                 RecipeNameLabel.Text = _selectedRecipe.Name;
                 RecipeImage.Source = _selectedRecipe.PhotoUrl;
-
-                if (_selectedRecipe.Allergens != null && _selectedRecipe.Allergens.Any())
-                {
-                    AllergensLabel.Text = " " + string.Join(", ", _selectedRecipe.Allergens);
-                }
-                else
-                {
-                    AllergensLabel.Text = " None listed.";
-                }
-
+                AllergensLabel.Text = _selectedRecipe.Allergens != null && _selectedRecipe.Allergens.Any()
+                    ? " " + string.Join(", ", _selectedRecipe.Allergens)
+                    : " None listed.";
                 IngredientsListView.ItemsSource = _selectedRecipe.Ingredients;
                 DirectionsLabel.Text = _selectedRecipe.Directions ?? "No directions provided.";
 
 #if ANDROID
                 ListPanel.IsVisible = false;
                 DetailPanel.IsVisible = true;
-                RecipeDetailsView.IsVisible = true;
-                SelectRecipeView.IsVisible = false;
-#else
-                RecipeDetailsView.IsVisible = true;
-                SelectRecipeView.IsVisible = false;
 #endif
+                RecipeDetailsView.IsVisible = true;
+                SelectRecipeView.IsVisible = false;
             }
             else
             {

@@ -19,6 +19,7 @@ namespace Freecost
         public static bool IsOffline { get; set; }
         public static string? DefaultRestaurantId { get; set; }
 
+        public static bool ShowConnectionErrorOnNextLoad { get; set; } = false;
         // UI-Bound Properties
         public static bool IsLoggedIn => !string.IsNullOrEmpty(AuthToken);
         public static bool IsNotLoggedIn => !IsLoggedIn;
@@ -87,6 +88,7 @@ namespace Freecost
             CurrentRestaurant = null;
             IsOffline = false;
             DefaultRestaurantId = null;
+            Preferences.Remove("AuthToken");
 
             Preferences.Remove("AuthToken");
             Preferences.Remove("RefreshToken"); // Added

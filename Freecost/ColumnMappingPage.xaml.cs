@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 
 namespace Freecost;
 
@@ -14,13 +13,11 @@ public partial class ColumnMappingPage : ContentPage
     private Dictionary<string, string> _fieldMappings = new Dictionary<string, string>();
     private string? _draggedItem;
 
-    private FirestoreDb? db;
-
-	public ColumnMappingPage()
-	{
-		InitializeComponent();
-		AppFieldsCollection.ItemsSource = AppFields;
-	}
+    public ColumnMappingPage()
+    {
+        InitializeComponent();
+        AppFieldsCollection.ItemsSource = AppFields;
+    }
 
     protected override void OnAppearing()
     {
@@ -53,9 +50,6 @@ public partial class ColumnMappingPage : ContentPage
 
     private async void OnSaveMapClicked(object sender, EventArgs e)
     {
-        db = FirestoreService.Db;
-        if (db == null) return;
-
         var map = new ImportMap
         {
             MapName = MapNameEntry.Text,
@@ -69,7 +63,16 @@ public partial class ColumnMappingPage : ContentPage
             SplitCharacter = SplitCharacterEntry.Text
         };
 
-        await db.Collection("importMaps").AddAsync(map);
+        if (SessionService.IsOffline)
+        {
+            var maps = await LocalStorageService.LoadAsync<ImportMap>();
+            maps.Add(map);
+            await LocalStorageService.SaveAsync(maps);
+        }
+        else
+        {
+            await FirestoreService.AddDocumentAsync("importMaps", map, SessionService.AuthToken);
+        }
 
         await Navigation.PopAsync();
     }

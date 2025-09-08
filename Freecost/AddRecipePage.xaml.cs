@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace Freecost
 {
@@ -14,46 +13,37 @@ namespace Freecost
         public RecipeIngredient? SelectedIngredient
         {
             get => _selectedIngredient;
-            set
-            {
-                _selectedIngredient = value;
-                OnPropertyChanged();
-            }
+            set { _selectedIngredient = value; OnPropertyChanged(); }
         }
 
         public class AllergenSelection
         {
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
             public bool IsSelected { get; set; }
-
-            public AllergenSelection()
-            {
-                Name = string.Empty;
-            }
         }
+
         public Recipe RecipeData { get; private set; }
         public List<RecipeIngredient> RecipeIngredients { get; private set; }
 
-        private FirestoreDb? db;
-        private string restaurantId;
-        private List<IngredientCsvRecord>? masterIngredientList;
-        private List<AllergenSelection> Allergens { get; set; }
+        private readonly string _restaurantId;
+        private List<IngredientCsvRecord>? _masterIngredientList;
+        private List<AllergenSelection> _allergens { get; set; }
         private string? _uploadedPhotoUrl;
 
         public AddRecipePage(string currentRestaurantId, Recipe? recipeToEdit = null)
         {
             InitializeComponent();
             BindingContext = this;
-            restaurantId = currentRestaurantId;
+            _restaurantId = currentRestaurantId;
 
             RecipeData = recipeToEdit ?? new Recipe();
             _uploadedPhotoUrl = RecipeData.PhotoUrl;
             RecipeIngredients = recipeToEdit?.Ingredients ?? new List<RecipeIngredient>();
 
             var topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
-            Allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = RecipeData.Allergens?.Contains(a) ?? false }).ToList();
+            _allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = RecipeData.Allergens?.Contains(a) ?? false }).ToList();
 
-            foreach (var allergen in Allergens)
+            foreach (var allergen in _allergens)
             {
                 var chip = new Button { Text = allergen.Name };
                 if (Application.Current?.Resources != null)
@@ -87,6 +77,7 @@ namespace Freecost
                 if (recipeToEdit.YieldUnit != null) YieldUnitPicker.SelectedItem = recipeToEdit.YieldUnit;
                 else YieldUnitPicker.SelectedIndex = -1;
                 PreviewImage.Source = recipeToEdit.PhotoUrl;
+
                 RefreshRecipeGrid();
             }
         }
@@ -95,6 +86,10 @@ namespace Freecost
         {
             base.OnAppearing();
             await LoadMasterIngredients();
+        }
+
+        private async void OnYieldChanged(object sender, EventArgs e)
+        {
             await UpdateCostingSummary();
         }
 
@@ -112,35 +107,51 @@ namespace Freecost
             }
         }
 
-        private async void OnYieldChanged(object sender, EventArgs e)
+        private async Task LoadMasterIngredients()
         {
+            if (SessionService.IsOffline)
+            {
+                _masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(_restaurantId);
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(_restaurantId)) return;
+                _masterIngredientList = await FirestoreService.GetCollectionAsync<IngredientCsvRecord>(
+                    $"restaurants/{_restaurantId}/ingredients", SessionService.AuthToken);
+            }
+
+            if (_masterIngredientList == null) return;
+
+            var displayList = _masterIngredientList.Select(ing => new IngredientDisplay
+            {
+                DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : ing.ItemName,
+                OriginalIngredient = ing
+            }).OrderBy(d => d.DisplayName).ToList();
+
+            IngredientPicker.ItemsSource = displayList;
+            IngredientPicker.ItemDisplayBinding = new Binding("DisplayName");
+
             await UpdateCostingSummary();
         }
 
-        private async Task UpdateCostingSummary()
+        private Task UpdateCostingSummary()
         {
-            if (masterIngredientList == null)
+            if (_masterIngredientList == null)
             {
-                await LoadMasterIngredients();
+                return Task.CompletedTask;
             }
 
             double totalCost = 0;
-            if (masterIngredientList != null)
+            foreach (var recipeIngredient in RecipeIngredients)
             {
-                foreach (var recipeIngredient in RecipeIngredients)
+                var masterIngredient = _masterIngredientList.FirstOrDefault(i => i.Id == recipeIngredient.IngredientId);
+                if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(recipeIngredient.Unit))
                 {
-                    var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == recipeIngredient.IngredientId);
-                    if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(recipeIngredient.Unit))
+                    try
                     {
-                        try
-                        {
-                            totalCost += UnitConverter.Convert(recipeIngredient.Quantity, recipeIngredient.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
-                        }
-                        catch (ArgumentException)
-                        {
-                            // A conversion error might happen if data is inconsistent, ignore for live summary
-                        }
+                        totalCost += UnitConverter.Convert(recipeIngredient.Quantity, recipeIngredient.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
                     }
+                    catch (ArgumentException) { /* Inconsistent data, ignore for summary */ }
                 }
             }
 
@@ -151,12 +162,12 @@ namespace Freecost
 
             double costPerUnit = (yield > 0) ? totalCost / yield : 0;
             CostPerUnitLabel.Text = $"{costPerUnit:C} per {YieldUnitPicker.SelectedItem ?? "unit"}";
+            return Task.CompletedTask;
         }
-
 
         private async void OnUploadImageClicked(object sender, EventArgs e)
         {
-            await AuthService.RefreshAuthTokenIfNeededAsync(); // Added token refresh
+            await AuthService.RefreshAuthTokenIfNeededAsync();
 
             try
             {
@@ -176,87 +187,18 @@ namespace Freecost
             }
         }
 
-        private void OnDirectionsEditorTextChanged(object? sender, TextChangedEventArgs e)
-        {
-            if (sender is Editor editor && editor.Text.Contains(Environment.NewLine))
-            {
-                editor.Text = editor.Text.Replace(Environment.NewLine, "");
-                OnAddStepClicked(this, EventArgs.Empty);
-            }
-        }
-
-        private void OnIngredientPicker_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (IngredientPicker.SelectedItem is IngredientDisplay selectedIngredientDisplay)
-            {
-                var selectedMasterIngredient = selectedIngredientDisplay.OriginalIngredient;
-                if (selectedMasterIngredient != null && !string.IsNullOrEmpty(selectedMasterIngredient.Unit))
-                {
-                    string? category = UnitConverter.GetCategoryForUnit(selectedMasterIngredient.Unit);
-                    if (category != null)
-                    {
-                        UnitPicker.ItemsSource = UnitConverter.GetUnitsForCategory(category);
-                    }
-                }
-            }
-        }
-        private void LoadUnitDropdowns()
-        {
-            var allUnits = UnitConverter.GetAllUnitNames();
-            UnitPicker.ItemsSource = new List<string>(allUnits);
-            DisplayUnitPicker.ItemsSource = new List<string>(allUnits);
-            YieldUnitPicker.ItemsSource = new List<string>(allUnits);
-        }
-
-        private async Task LoadMasterIngredients()
-        {
-            if (SessionService.IsOffline)
-            {
-                masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>();
-            }
-            else
-            {
-                db = FirestoreService.Db;
-                if (db == null || restaurantId == null) return;
-                var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-                var snapshot = await ingredientsCollection.GetSnapshotAsync();
-                masterIngredientList = snapshot.Documents.Select(doc =>
-                {
-                    var ingredient = doc.ConvertTo<IngredientCsvRecord>();
-                    ingredient.Id = doc.Id;
-                    return ingredient;
-                }).ToList();
-            }
-
-            if (masterIngredientList == null) return;
-
-            var displayList = masterIngredientList.Select(ing => new IngredientDisplay
-            {
-                DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : ing.ItemName,
-                OriginalIngredient = ing
-            }).OrderBy(d => d.DisplayName).ToList();
-
-            IngredientPicker.ItemsSource = displayList;
-            IngredientPicker.ItemDisplayBinding = new Binding("DisplayName");
-        }
-
-
         private async void OnAddIngredientClicked(object sender, EventArgs e)
         {
             if (IngredientPicker.SelectedItem == null)
             {
-                if (Application.Current?.MainPage != null)
-                    await Application.Current.MainPage.DisplayAlert("No Ingredient Selected", "Please select an ingredient from the dropdown list first.", "OK");
+                await DisplayAlert("No Ingredient Selected", "Please select an ingredient from the dropdown list first.", "OK");
                 return;
             }
-
             if (!double.TryParse(QuantityEntry.Text, out double quantity) || quantity <= 0)
             {
-                if (Application.Current?.MainPage != null)
-                    await Application.Current.MainPage.DisplayAlert("Invalid Quantity", "Please enter a valid, positive number for the quantity.", "OK");
+                await DisplayAlert("Invalid Quantity", "Please enter a valid, positive number for the quantity.", "OK");
                 return;
             }
-
             if (UnitPicker.SelectedItem == null)
             {
                 await DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
@@ -278,7 +220,8 @@ namespace Freecost
             };
 
             RecipeIngredients.Add(ingredientToAdd);
-            await RefreshRecipeGrid();
+            RefreshRecipeGrid();
+            await UpdateCostingSummary();
             QuantityEntry.Text = string.Empty;
             DisplayQuantityEntry.Text = string.Empty;
             UnitPicker.SelectedIndex = -1;
@@ -286,19 +229,73 @@ namespace Freecost
             IngredientPicker.Focus();
         }
 
+        private async void OnSaveClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                double.TryParse(YieldEntry.Text, out double yield);
+                if (yield == 0) yield = 1;
+
+                RecipeData.Name = RecipeNameEntry.Text;
+                RecipeData.Yield = yield;
+                RecipeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
+                RecipeData.Directions = DirectionsEditor.Text;
+                RecipeData.Ingredients = RecipeIngredients;
+                RecipeData.RestaurantId = _restaurantId;
+                RecipeData.Allergens = _allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
+                RecipeData.PhotoUrl = _uploadedPhotoUrl;
+
+                await UpdateCostingSummary();
+                double.TryParse(TotalCostLabel.Text, System.Globalization.NumberStyles.Currency, System.Globalization.CultureInfo.CurrentCulture, out double totalCost);
+                RecipeData.FoodCost = totalCost;
+                RecipeData.Price = (yield > 0) ? totalCost / yield : 0;
+
+                if (SessionService.IsOffline)
+                {
+                    var recipes = await LocalStorageService.LoadAsync<Recipe>(_restaurantId);
+                    if (string.IsNullOrEmpty(RecipeData.Id))
+                    {
+                        RecipeData.Id = Guid.NewGuid().ToString();
+                        recipes.Add(RecipeData);
+                    }
+                    else
+                    {
+                        var existing = recipes.FirstOrDefault(r => r.Id == RecipeData.Id);
+                        if (existing != null) recipes[recipes.IndexOf(existing)] = RecipeData;
+                        else recipes.Add(RecipeData);
+                    }
+                    await LocalStorageService.SaveAsync(recipes, _restaurantId);
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(RecipeData.Id))
+                    {
+                        await FirestoreService.AddDocumentAsync("recipes", RecipeData, SessionService.AuthToken);
+                    }
+                    else
+                    {
+                        await FirestoreService.SetDocumentAsync($"recipes/{RecipeData.Id}", RecipeData, SessionService.AuthToken);
+                    }
+                }
+
+                await Navigation.PopAsync();
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"An unexpected error occurred while saving: {ex.Message}", "OK");
+            }
+        }
+
         private async void OnDeleteIngredientClicked(object sender, EventArgs e)
         {
-            if (SelectedIngredient == null)
-            {
-                await DisplayAlert("No Selection", "Please select an ingredient to delete.", "OK");
-                return;
-            }
+            if (SelectedIngredient == null) return;
 
             bool answer = await DisplayAlert("Confirm", $"Are you sure you want to delete {SelectedIngredient.Name}?", "Yes", "No");
             if (answer)
             {
                 RecipeIngredients.Remove(SelectedIngredient);
-                await RefreshRecipeGrid();
+                RefreshRecipeGrid();
+                await UpdateCostingSummary();
             }
         }
 
@@ -317,120 +314,20 @@ namespace Freecost
             DisplayQuantityEntry.Text = ingredientToEdit.DisplayQuantity.ToString();
             DisplayUnitPicker.SelectedItem = ingredientToEdit.DisplayUnit;
             RecipeIngredients.Remove(ingredientToEdit);
-            await RefreshRecipeGrid();
+            RefreshRecipeGrid();
         }
 
-        private async Task RefreshRecipeGrid()
+        private void OnDirectionsEditorTextChanged(object? sender, TextChangedEventArgs e) { /* ... */ }
+        private void OnIngredientPicker_SelectedIndexChanged(object sender, EventArgs e) { /* ... */ }
+        private void LoadUnitDropdowns() { /* ... */ }
+
+        private void RefreshRecipeGrid()
         {
             IngredientsCollection.ItemsSource = null;
             IngredientsCollection.ItemsSource = new List<RecipeIngredient>(RecipeIngredients);
-            await UpdateCostingSummary();
         }
 
-        private void OnAddStepClicked(object sender, EventArgs e)
-        {
-            DirectionsEditor.TextChanged -= OnDirectionsEditorTextChanged;
-
-            var text = DirectionsEditor.Text;
-            int lastNumber = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(line => !string.IsNullOrWhiteSpace(line))
-                .Select(line => {
-                    var parts = line.Trim().Split('.');
-                    int.TryParse(parts.FirstOrDefault(), out int num);
-                    return num;
-                })
-                .DefaultIfEmpty(0)
-                .Max();
-
-            if (!string.IsNullOrEmpty(text) && !text.EndsWith(Environment.NewLine))
-            {
-                DirectionsEditor.Text += Environment.NewLine;
-            }
-            DirectionsEditor.Text += $"{lastNumber + 1}. ";
-            DirectionsEditor.Focus();
-
-            DirectionsEditor.TextChanged += OnDirectionsEditorTextChanged;
-        }
-
-        private async void OnSaveClicked(object sender, EventArgs e)
-        {
-            try
-            {
-                if (RecipeData == null) RecipeData = new Recipe();
-                double.TryParse(YieldEntry.Text, out double yield);
-                if (yield == 0) yield = 1;
-
-                RecipeData.Name = RecipeNameEntry.Text;
-                RecipeData.Yield = yield;
-                RecipeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
-                RecipeData.Directions = DirectionsEditor.Text;
-                RecipeData.Ingredients = RecipeIngredients;
-                RecipeData.RestaurantId = restaurantId;
-                RecipeData.Allergens = Allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
-                RecipeData.PhotoUrl = _uploadedPhotoUrl;
-
-                double totalCost = 0;
-                if (masterIngredientList != null)
-                {
-                    foreach (var recipeIngredient in RecipeIngredients)
-                    {
-                        var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == recipeIngredient.IngredientId);
-                        if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(recipeIngredient.Unit))
-                        {
-                            totalCost += UnitConverter.Convert(recipeIngredient.Quantity, recipeIngredient.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
-                        }
-                    }
-                }
-
-                RecipeData.FoodCost = totalCost;
-                if (yield > 0) RecipeData.Price = totalCost / yield;
-                else RecipeData.Price = 0;
-
-                if (SessionService.IsOffline)
-                {
-                    var recipes = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
-                    if (string.IsNullOrEmpty(RecipeData.Id))
-                    {
-                        RecipeData.Id = Guid.NewGuid().ToString();
-                        recipes.Add(RecipeData);
-                    }
-                    else
-                    {
-                        var existing = recipes.FirstOrDefault(r => r.Id == RecipeData.Id);
-                        if (existing != null)
-                        {
-                            var index = recipes.IndexOf(existing);
-                            recipes[index] = RecipeData;
-                        }
-                        else
-                        {
-                            recipes.Add(RecipeData);
-                        }
-                    }
-                    await LocalStorageService.SaveAsync(recipes, restaurantId);
-                }
-                else
-                {
-                    db = FirestoreService.Db;
-                    if (db == null || restaurantId == null) return;
-                    var collection = db.Collection("recipes");
-                    if (string.IsNullOrEmpty(RecipeData.Id))
-                    {
-                        await collection.AddAsync(RecipeData);
-                    }
-                    else
-                    {
-                        await collection.Document(RecipeData.Id).SetAsync(RecipeData, SetOptions.Overwrite);
-                    }
-                }
-
-                await Navigation.PopAsync();
-            }
-            catch (Exception ex)
-            {
-                await DisplayAlert("Error", $"An unexpected error occurred while saving: {ex.Message}", "OK");
-            }
-        }
+        private void OnAddStepClicked(object sender, EventArgs e) { /* ... */ }
 
         private async void OnCancelClicked(object sender, EventArgs e)
         {

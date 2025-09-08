@@ -2,13 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Google.Cloud.Firestore;
 
 namespace Freecost
 {
     public partial class UnitConversionManagerPage : ContentPage
     {
-        private FirestoreDb? db;
         private List<UnitConversion> _conversions = new List<UnitConversion>();
 
         public UnitConversionManagerPage()
@@ -30,15 +28,9 @@ namespace Freecost
             }
             else
             {
-                db = FirestoreService.Db;
-                if (db == null) return;
-                var snapshot = await db.Collection("unitConversions").GetSnapshotAsync();
-                _conversions = snapshot.Documents.Select(doc =>
-                {
-                    var conversion = doc.ConvertTo<UnitConversion>();
-                    conversion.Id = doc.Id;
-                    return conversion;
-                }).ToList();
+                // Note: Unit conversions are global and don't require an auth token if your rules allow it.
+                // If you require login for this, pass SessionService.AuthToken
+                _conversions = await FirestoreService.GetCollectionAsync<UnitConversion>("unitConversions", SessionService.AuthToken);
             }
             ConversionsListView.ItemsSource = _conversions;
         }
@@ -77,10 +69,9 @@ namespace Freecost
                         }
                         else
                         {
-                            db = FirestoreService.Db;
-                            if (db != null && conversion.Id != null)
+                            if (conversion.Id != null)
                             {
-                                await db.Collection("unitConversions").Document(conversion.Id).DeleteAsync();
+                                await FirestoreService.DeleteDocumentAsync($"unitConversions/{conversion.Id}", SessionService.AuthToken);
                             }
                         }
                         await LoadConversions();

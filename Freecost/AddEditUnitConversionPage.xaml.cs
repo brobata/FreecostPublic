@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using Google.Cloud.Firestore;
 
 namespace Freecost
 {
@@ -41,25 +40,19 @@ namespace Freecost
                 else
                 {
                     var existing = conversions.FirstOrDefault(c => c.Id == _conversion.Id);
-                    if (existing != null)
-                    {
-                        var index = conversions.IndexOf(existing);
-                        conversions[index] = _conversion;
-                    }
+                    if (existing != null) conversions[conversions.IndexOf(existing)] = _conversion;
                 }
                 await LocalStorageService.SaveAsync(conversions);
             }
             else
             {
-                var db = FirestoreService.Db;
-                if (db == null) return;
                 if (string.IsNullOrEmpty(_conversion.Id))
                 {
-                    await db.Collection("unitConversions").AddAsync(_conversion);
+                    await FirestoreService.AddDocumentAsync("unitConversions", _conversion, SessionService.AuthToken);
                 }
                 else
                 {
-                    await db.Collection("unitConversions").Document(_conversion.Id).SetAsync(_conversion);
+                    await FirestoreService.SetDocumentAsync($"unitConversions/{_conversion.Id}", _conversion, SessionService.AuthToken);
                 }
             }
 

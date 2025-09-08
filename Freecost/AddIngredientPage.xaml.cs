@@ -1,12 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace Freecost;
 
 public partial class AddIngredientPage : ContentPage
 {
-    public IngredientCsvRecord Ingredient { get; private set; } = new IngredientCsvRecord();
+    public IngredientCsvRecord Ingredient { get; private set; }
 
     public AddIngredientPage(IngredientCsvRecord? ingredientToEdit = null)
     {
@@ -23,6 +22,10 @@ public partial class AddIngredientPage : ContentPage
             CasePriceEntry.Text = ingredientToEdit.CasePrice.ToString();
             CaseQuantityEntry.Text = ingredientToEdit.CaseQuantity.ToString();
             UnitPicker.SelectedItem = ingredientToEdit.Unit;
+        }
+        else
+        {
+            Ingredient = new IngredientCsvRecord();
         }
     }
 
@@ -41,52 +44,51 @@ public partial class AddIngredientPage : ContentPage
         Ingredient.CaseQuantity = Convert.ToDouble(CaseQuantityEntry.Text);
         Ingredient.Unit = UnitPicker.SelectedItem?.ToString() ?? string.Empty;
 
-        if (SessionService.IsOffline)
+        var restaurantId = SessionService.CurrentRestaurant?.Id;
+        if (restaurantId == null)
         {
-            // Pass the restaurantId when loading and saving
-            var ingredients = await LocalStorageService.LoadAsync<IngredientCsvRecord>(SessionService.CurrentRestaurant?.Id);
-            if (string.IsNullOrEmpty(Ingredient.Id))
-            {
-                Ingredient.Id = Guid.NewGuid().ToString();
-                ingredients.Add(Ingredient);
-            }
-            else
-            {
-                var existing = ingredients.FirstOrDefault(i => i.Id == Ingredient.Id);
-                if (existing != null)
-                {
-                    ingredients.Remove(existing);
-                    ingredients.Add(Ingredient);
-                }
-            }
-            await LocalStorageService.SaveAsync(ingredients, SessionService.CurrentRestaurant?.Id);
+            await DisplayAlert("Error", "No restaurant selected.", "OK");
+            return;
+        }
+
+        // Save to local storage first for offline-first approach
+        var ingredients = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
+        if (string.IsNullOrEmpty(Ingredient.Id))
+        {
+            Ingredient.Id = Guid.NewGuid().ToString();
+            ingredients.Add(Ingredient);
         }
         else
         {
-            var db = FirestoreService.Db;
-            var restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (db == null || restaurantId == null) return;
-
-            var collection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-
-            var ingredientToSave = new IngredientCsvRecord
+            var existing = ingredients.FirstOrDefault(i => i.Id == Ingredient.Id);
+            if (existing != null)
             {
-                SupplierName = Ingredient.SupplierName,
-                ItemName = Ingredient.ItemName,
-                AliasName = Ingredient.AliasName,
-                SKU = Ingredient.SKU,
-                CasePrice = Ingredient.CasePrice,
-                CaseQuantity = Ingredient.CaseQuantity,
-                Unit = Ingredient.Unit
+                ingredients[ingredients.IndexOf(existing)] = Ingredient;
+            }
+        }
+        await LocalStorageService.SaveAsync(ingredients, restaurantId);
+
+        // If online, also save to Firestore
+        if (!SessionService.IsOffline)
+        {
+            var ingredientToSave = new // Create a clean object without the ID for adding
+            {
+                Ingredient.SupplierName,
+                Ingredient.ItemName,
+                Ingredient.AliasName,
+                Ingredient.SKU,
+                Ingredient.CasePrice,
+                Ingredient.CaseQuantity,
+                Ingredient.Unit
             };
 
-            if (string.IsNullOrEmpty(Ingredient.Id))
+            if (string.IsNullOrEmpty(Ingredient.Id) || ingredients.Any(i => i.Id == Ingredient.Id)) // It's a new item
             {
-                await collection.AddAsync(ingredientToSave);
+                await FirestoreService.AddDocumentAsync($"restaurants/{restaurantId}/ingredients", ingredientToSave, SessionService.AuthToken);
             }
             else
             {
-                await collection.Document(Ingredient.Id).SetAsync(ingredientToSave);
+                await FirestoreService.SetDocumentAsync($"restaurants/{restaurantId}/ingredients/{Ingredient.Id}", ingredientToSave, SessionService.AuthToken);
             }
         }
 

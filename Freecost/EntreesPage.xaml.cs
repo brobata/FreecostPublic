@@ -1,4 +1,3 @@
-using Google.Cloud.Firestore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,7 +8,6 @@ namespace Freecost
 {
     public partial class EntreesPage : ContentPage
     {
-        private FirestoreDb? db;
         private string? restaurantId;
         private List<EntreeDisplayRecord> _allEntrees = new List<EntreeDisplayRecord>();
         private EntreeDisplayRecord? _selectedEntree;
@@ -89,31 +87,23 @@ namespace Freecost
             }
             else
             {
-                db = FirestoreService.Db;
-                if (db == null) return;
+                var allEntrees = await FirestoreService.GetCollectionAsync<Entree>("entrees", SessionService.AuthToken);
+                var restaurantEntrees = allEntrees.Where(e => e.RestaurantId == restaurantId).ToList();
 
-                entrees = new List<EntreeDisplayRecord>();
-                var query = db.Collection("entrees").WhereEqualTo("RestaurantId", restaurantId);
-                var snapshot = await query.GetSnapshotAsync();
-
-                entrees = snapshot.Documents.Select(document =>
+                entrees = restaurantEntrees.Select(e => new EntreeDisplayRecord
                 {
-                    var entree = document.ConvertTo<Entree>();
-                    return new EntreeDisplayRecord
-                    {
-                        Id = document.Id,
-                        Name = entree.Name,
-                        Yield = entree.Yield,
-                        YieldUnit = entree.YieldUnit,
-                        Directions = entree.Directions,
-                        PhotoUrl = entree.PhotoUrl,
-                        RestaurantId = entree.RestaurantId,
-                        Allergens = entree.Allergens,
-                        Components = entree.Components,
-                        FoodCost = entree.FoodCost,
-                        Price = entree.Price,
-                        PlatePrice = entree.PlatePrice
-                    };
+                    Id = e.Id,
+                    Name = e.Name,
+                    Yield = e.Yield,
+                    YieldUnit = e.YieldUnit,
+                    Directions = e.Directions,
+                    PhotoUrl = e.PhotoUrl,
+                    RestaurantId = e.RestaurantId,
+                    Allergens = e.Allergens,
+                    Components = e.Components,
+                    FoodCost = e.FoodCost,
+                    Price = e.Price,
+                    PlatePrice = e.PlatePrice
                 }).ToList();
                 await LocalStorageService.SaveAsync(entrees.Cast<Entree>().ToList(), restaurantId);
             }
@@ -149,13 +139,25 @@ namespace Freecost
             bool answer = await DisplayAlert("Confirm Delete", $"Are you sure you want to delete {_selectedEntree.Name}?", "Yes", "No");
             if (answer)
             {
-                if (db == null || restaurantId == null || _selectedEntree.Id == null) return;
-                await db.Collection("entrees").Document(_selectedEntree.Id).DeleteAsync();
-                LoadData();
+                if (restaurantId == null || _selectedEntree.Id == null) return;
+
+                if (SessionService.IsOffline)
+                {
+                    var localEntrees = await LocalStorageService.LoadAsync<Entree>(restaurantId);
+                    localEntrees.RemoveAll(ent => ent.Id == _selectedEntree.Id);
+                    await LocalStorageService.SaveAsync(localEntrees, restaurantId);
+                }
+                else
+                {
+                    await FirestoreService.DeleteDocumentAsync($"entrees/{_selectedEntree.Id}", SessionService.AuthToken);
+                }
+
+                await LoadEntrees();
             }
         }
 
-        private void OnEntreeSelected(object sender, SelectedItemChangedEventArgs e)
+
+private void OnEntreeSelected(object sender, SelectedItemChangedEventArgs e)
         {
             // First, un-select the previously selected item if it exists
             if (_selectedEntree != null)
