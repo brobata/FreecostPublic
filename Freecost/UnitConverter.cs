@@ -1,59 +1,38 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Google.Cloud.Firestore;
 
 namespace Freecost
 {
-    public class UnitConversion
-    {
-        public string UnitName { get; set; }
-        public string Category { get; set; }
-        public double ToBaseFactor { get; set; }
-
-        public UnitConversion()
-        {
-            UnitName = string.Empty;
-            Category = string.Empty;
-        }
-    }
-
     public static class UnitConverter
     {
-        private static readonly List<UnitConversion> _conversions;
+        private static List<UnitConversion> _conversions = new List<UnitConversion>();
         private static readonly List<string> displayUnits = new List<string> { "g", "kg", "oz", "lb", "ml", "l", "fl oz", "cup", "pt", "qt", "gal", "ea", "dz", "#AVG" };
 
-        static UnitConverter()
+        public static async Task InitializeAsync()
         {
-            _conversions = new List<UnitConversion>
+            if (SessionService.IsOffline)
             {
-                new UnitConversion { UnitName = "gram", Category = "Weight", ToBaseFactor = 1 },
-                new UnitConversion { UnitName = "g", Category = "Weight", ToBaseFactor = 1 },
-                new UnitConversion { UnitName = "kilogram", Category = "Weight", ToBaseFactor = 1000 },
-                new UnitConversion { UnitName = "kg", Category = "Weight", ToBaseFactor = 1000 },
-                new UnitConversion { UnitName = "ounce", Category = "Weight", ToBaseFactor = 28.3495 },
-                new UnitConversion { UnitName = "oz", Category = "Weight", ToBaseFactor = 28.3495 },
-                new UnitConversion { UnitName = "pound", Category = "Weight", ToBaseFactor = 453.592 },
-                new UnitConversion { UnitName = "lb", Category = "Weight", ToBaseFactor = 453.592 },
-                new UnitConversion { UnitName = "lbs", Category = "Weight", ToBaseFactor = 453.592 },
-                new UnitConversion { UnitName = "#AVG", Category = "Weight", ToBaseFactor = 453.592 },
-                new UnitConversion { UnitName = "milliliter", Category = "Volume", ToBaseFactor = 1 },
-                new UnitConversion { UnitName = "ml", Category = "Volume", ToBaseFactor = 1 },
-                new UnitConversion { UnitName = "liter", Category = "Volume", ToBaseFactor = 1000 },
-                new UnitConversion { UnitName = "l", Category = "Volume", ToBaseFactor = 1000 },
-                new UnitConversion { UnitName = "fluid ounce", Category = "Volume", ToBaseFactor = 29.5735 },
-                new UnitConversion { UnitName = "fl oz", Category = "Volume", ToBaseFactor = 29.5735 },
-                new UnitConversion { UnitName = "cup", Category = "Volume", ToBaseFactor = 236.588 },
-                new UnitConversion { UnitName = "pint", Category = "Volume", ToBaseFactor = 473.176 },
-                new UnitConversion { UnitName = "pt", Category = "Volume", ToBaseFactor = 473.176 },
-                new UnitConversion { UnitName = "quart", Category = "Volume", ToBaseFactor = 946.353 },
-                new UnitConversion { UnitName = "qt", Category = "Volume", ToBaseFactor = 946.353 },
-                new UnitConversion { UnitName = "gallon", Category = "Volume", ToBaseFactor = 3785.41 },
-                new UnitConversion { UnitName = "gal", Category = "Volume", ToBaseFactor = 3785.41 },
-                new UnitConversion { UnitName = "each", Category = "Each", ToBaseFactor = 1 },
-                new UnitConversion { UnitName = "ea", Category = "Each", ToBaseFactor = 1 },
-                new UnitConversion { UnitName = "dozen", Category = "Each", ToBaseFactor = 12 },
-                new UnitConversion { UnitName = "dz", Category = "Each", ToBaseFactor = 12 }
-            };
+                _conversions = await LocalStorageService.LoadAsync<UnitConversion>();
+            }
+            else
+            {
+                var db = FirestoreService.Db;
+                if (db == null)
+                {
+                    // Handle case where Firestore is not initialized
+                    return;
+                }
+                var snapshot = await db.Collection("unitConversions").GetSnapshotAsync();
+                _conversions = snapshot.Documents.Select(doc => {
+                    var conversion = doc.ConvertTo<UnitConversion>();
+                    conversion.Id = doc.Id;
+                    return conversion;
+                }).ToList();
+                await LocalStorageService.SaveAsync(_conversions);
+            }
         }
 
         public static double Convert(double value, string fromUnit, string toUnit)

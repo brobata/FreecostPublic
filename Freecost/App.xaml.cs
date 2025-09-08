@@ -22,6 +22,8 @@ public partial class App : Application
         {
             await FirestoreService.InitializeAsync();
 
+            await UnitConverter.InitializeAsync(); // Add this line
+
             var savedRefreshToken = Preferences.Get("RefreshToken", string.Empty);
             if (!string.IsNullOrEmpty(savedRefreshToken))
             {

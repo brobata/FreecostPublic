@@ -6,6 +6,26 @@ using System.Runtime.CompilerServices;
 
 namespace Freecost
 {
+
+    [FirestoreData]
+    public class UnitConversion
+    {
+        [FirestoreDocumentId]
+        public string? Id { get; set; }
+        [FirestoreProperty]
+        public string UnitName { get; set; }
+        [FirestoreProperty]
+        public string Category { get; set; }
+        [FirestoreProperty]
+        public double ToBaseFactor { get; set; }
+
+        public UnitConversion()
+        {
+            UnitName = string.Empty;
+            Category = string.Empty;
+        }
+    }
+
     [FirestoreData]
     public class IngredientCsvRecord
     {
@@ -253,5 +273,6 @@ namespace Freecost
         public List<Recipe> Recipes { get; set; } = new List<Recipe>();
         public List<Entree> Entrees { get; set; } = new List<Entree>();
         public List<ImportMap> ImportMaps { get; set; } = new List<ImportMap>();
+        public List<UnitConversion> UnitConversions { get; set; } = new List<UnitConversion>();
     }
 }

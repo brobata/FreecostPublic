@@ -95,7 +95,7 @@ namespace Freecost
         {
             base.OnAppearing();
             await LoadMasterIngredients();
-            UpdateCostingSummary();
+            await UpdateCostingSummary();
         }
 
         private void OnIngredientSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -112,9 +112,9 @@ namespace Freecost
             }
         }
 
-        private void OnYieldChanged(object sender, EventArgs e)
+        private async void OnYieldChanged(object sender, EventArgs e)
         {
-            UpdateCostingSummary();
+            await UpdateCostingSummary();
         }
 
         private async Task UpdateCostingSummary()
@@ -241,25 +241,25 @@ namespace Freecost
         }
 
 
-        private void OnAddIngredientClicked(object sender, EventArgs e)
+        private async void OnAddIngredientClicked(object sender, EventArgs e)
         {
             if (IngredientPicker.SelectedItem == null)
             {
                 if (Application.Current?.MainPage != null)
-                    Application.Current.MainPage.DisplayAlert("No Ingredient Selected", "Please select an ingredient from the dropdown list first.", "OK");
+                    await Application.Current.MainPage.DisplayAlert("No Ingredient Selected", "Please select an ingredient from the dropdown list first.", "OK");
                 return;
             }
 
             if (!double.TryParse(QuantityEntry.Text, out double quantity) || quantity <= 0)
             {
                 if (Application.Current?.MainPage != null)
-                    Application.Current.MainPage.DisplayAlert("Invalid Quantity", "Please enter a valid, positive number for the quantity.", "OK");
+                    await Application.Current.MainPage.DisplayAlert("Invalid Quantity", "Please enter a valid, positive number for the quantity.", "OK");
                 return;
             }
 
             if (UnitPicker.SelectedItem == null)
             {
-                DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
+                await DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
                 return;
             }
 
@@ -278,7 +278,7 @@ namespace Freecost
             };
 
             RecipeIngredients.Add(ingredientToAdd);
-            RefreshRecipeGrid();
+            await RefreshRecipeGrid();
             QuantityEntry.Text = string.Empty;
             DisplayQuantityEntry.Text = string.Empty;
             UnitPicker.SelectedIndex = -1;
@@ -298,15 +298,15 @@ namespace Freecost
             if (answer)
             {
                 RecipeIngredients.Remove(SelectedIngredient);
-                RefreshRecipeGrid();
+                await RefreshRecipeGrid();
             }
         }
 
-        private void OnEditIngredientClicked(object sender, EventArgs e)
+        private async void OnEditIngredientClicked(object sender, EventArgs e)
         {
             if (SelectedIngredient == null)
             {
-                DisplayAlert("No Selection", "Please select an ingredient to edit.", "OK");
+                await DisplayAlert("No Selection", "Please select an ingredient to edit.", "OK");
                 return;
             }
             var ingredientToEdit = SelectedIngredient;
@@ -317,14 +317,14 @@ namespace Freecost
             DisplayQuantityEntry.Text = ingredientToEdit.DisplayQuantity.ToString();
             DisplayUnitPicker.SelectedItem = ingredientToEdit.DisplayUnit;
             RecipeIngredients.Remove(ingredientToEdit);
-            RefreshRecipeGrid();
+            await RefreshRecipeGrid();
         }
 
-        private void RefreshRecipeGrid()
+        private async Task RefreshRecipeGrid()
         {
             IngredientsCollection.ItemsSource = null;
             IngredientsCollection.ItemsSource = new List<RecipeIngredient>(RecipeIngredients);
-            UpdateCostingSummary();
+            await UpdateCostingSummary();
         }
 
         private void OnAddStepClicked(object sender, EventArgs e)

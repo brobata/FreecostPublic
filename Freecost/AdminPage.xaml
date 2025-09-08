@@ -9,6 +9,10 @@
             Style="{StaticResource Headline}"
             HorizontalOptions="Center" />
 
+        <Button Text="Manage Unit Conversions"
+        Clicked="OnManageUnitConversionsClicked"
+        HorizontalOptions="Fill" />
+        
         <Button Text="Manage Import Maps" 
                 Clicked="OnManageImportMapsClicked" 
                 HorizontalOptions="Fill" />

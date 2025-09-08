@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.UnitConversionManagerPage"
+             Title="Unit Conversion Manager">
+    <VerticalStackLayout Spacing="20" Padding="30">
+        <Label
+            Text="Unit Conversion Manager"
+            Style="{StaticResource Headline}"
+            HorizontalOptions="Center" />
+
+        <Button Text="Add Conversion"
+                Clicked="OnAddConversionClicked"
+                HorizontalOptions="Fill" />
+
+        <ListView x:Name="ConversionsListView">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <ViewCell>
+                        <Grid Padding="10" ColumnDefinitions="*,*,*,Auto,Auto">
+                            <Label Grid.Column="0" Text="{Binding UnitName}" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding Category}" VerticalOptions="Center" />
+                            <Label Grid.Column="2" Text="{Binding ToBaseFactor}" VerticalOptions="Center" />
+                            <Button Grid.Column="3" Text="Edit" Clicked="OnEditConversionClicked" CommandParameter="{Binding .}" />
+                            <Button Grid.Column="4" Text="Delete" Clicked="OnDeleteConversionClicked" CommandParameter="{Binding .}" Style="{StaticResource DeleteButtonStyle}" />
+                        </Grid>
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </VerticalStackLayout>
+</ContentPage>

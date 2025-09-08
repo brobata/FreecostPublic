@@ -46,6 +46,11 @@ namespace Freecost
             if (Db == null || SessionService.CurrentRestaurant?.Id == null) return;
             string restaurantId = SessionService.CurrentRestaurant.Id;
 
+            var conversionsQuery = Db.Collection("unitConversions");
+            var conversionsSnapshot = await conversionsQuery.GetSnapshotAsync();
+            var conversions = conversionsSnapshot.Documents.Select(doc => doc.ConvertTo<UnitConversion>()).ToList();
+            await LocalStorageService.SaveAsync(conversions);
+
             // Fetch Ingredients
             var ingredientsQuery = Db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
             var ingredientsSnapshot = await ingredientsQuery.GetSnapshotAsync();
@@ -75,6 +80,20 @@ namespace Freecost
         {
             if (Db == null || SessionService.CurrentRestaurant?.Id == null) return;
             string restaurantId = SessionService.CurrentRestaurant.Id;
+
+            var localConversions = await LocalStorageService.LoadAsync<UnitConversion>();
+            var conversionsCollection = Db.Collection("unitConversions");
+            foreach (var item in localConversions)
+            {
+                if (string.IsNullOrEmpty(item.Id))
+                {
+                    await conversionsCollection.AddAsync(item);
+                }
+                else
+                {
+                    await conversionsCollection.Document(item.Id).SetAsync(item, SetOptions.MergeAll);
+                }
+            }
 
             var allLocalData = await LocalStorageService.GetAllDataAsync(restaurantId);
 

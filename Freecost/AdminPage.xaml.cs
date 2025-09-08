@@ -9,6 +9,11 @@ public partial class AdminPage : ContentPage
         InitializeComponent();
     }
 
+    private async void OnManageUnitConversionsClicked(object sender, EventArgs e)
+    {
+        await Navigation.PushAsync(new UnitConversionManagerPage());
+    }
+
     private async void OnManageImportMapsClicked(object sender, EventArgs e)
     {
         await Navigation.PushAsync(new ImportMapManagerPage());

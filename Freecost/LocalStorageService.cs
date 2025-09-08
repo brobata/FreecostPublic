@@ -43,6 +43,7 @@ public static class LocalStorageService
         await SaveAsync(allData.Recipes, restaurantId);
         await SaveAsync(allData.Entrees, restaurantId);
         await SaveAsync(allData.ImportMaps); // Maps are global
+        await SaveAsync(allData.UnitConversions); // Conversions are global
     }
 
     public static async Task<AllData> GetAllDataAsync(string restaurantId)
@@ -52,7 +53,8 @@ public static class LocalStorageService
             Ingredients = await LoadAsync<IngredientCsvRecord>(restaurantId),
             Recipes = await LoadAsync<Recipe>(restaurantId),
             Entrees = await LoadAsync<Entree>(restaurantId),
-            ImportMaps = await LoadAsync<ImportMap>() // Maps are global
+            ImportMaps = await LoadAsync<ImportMap>(), // Maps are global
+            UnitConversions = await LoadAsync<UnitConversion>() // Conversions are global
         };
         return allData;
     }

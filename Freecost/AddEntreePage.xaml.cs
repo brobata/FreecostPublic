@@ -6,232 +6,124 @@ using Google.Cloud.Firestore;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Freecost;
-
-public partial class AddEntreePage : ContentPage, INotifyPropertyChanged
+namespace Freecost
 {
-    private EntreeComponent? _selectedComponent;
-    public EntreeComponent? SelectedComponent
+    public partial class AddEntreePage : ContentPage, INotifyPropertyChanged
     {
-        get => _selectedComponent;
-        set
+        private EntreeComponent? _selectedComponent;
+        public EntreeComponent? SelectedComponent
         {
-            _selectedComponent = value;
-            OnPropertyChanged();
-        }
-    }
-    public class AllergenSelection
-    {
-        public string Name { get; set; }
-        public bool IsSelected { get; set; }
-
-        public AllergenSelection()
-        {
-            Name = string.Empty;
-        }
-    }
-
-    public Entree EntreeData { get; private set; }
-    public List<EntreeComponent> EntreeComponents { get; private set; }
-
-    private string restaurantId;
-    private FirestoreDb? db = FirestoreService.Db;
-    private List<IngredientCsvRecord>? masterIngredientList;
-    private List<string> topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
-    private List<AllergenSelection> Allergens { get; set; }
-    private string? _uploadedPhotoUrl;
-
-    public AddEntreePage(string currentRestaurantId, Entree? entreeToEdit = null)
-    {
-        InitializeComponent();
-        BindingContext = this;
-        restaurantId = currentRestaurantId;
-
-        EntreeData = entreeToEdit ?? new Entree();
-        _uploadedPhotoUrl = EntreeData.PhotoUrl;
-        EntreeComponents = entreeToEdit?.Components ?? new List<EntreeComponent>();
-
-        Allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = EntreeData.Allergens?.Contains(a) ?? false }).ToList();
-
-        foreach (var allergen in Allergens)
-        {
-            var chip = new Button { Text = allergen.Name };
-            if (Application.Current?.Resources != null)
+            get => _selectedComponent;
+            set
             {
-                chip.Style = (Style)Application.Current.Resources["ChipStyle"];
-                chip.BackgroundColor = allergen.IsSelected ? (Color)Application.Current.Resources["Accent"] : (Color)Application.Current.Resources["Secondary"];
+                _selectedComponent = value;
+                OnPropertyChanged();
             }
-            chip.Clicked += (s, e) =>
+        }
+        public class AllergenSelection
+        {
+            public string Name { get; set; }
+            public bool IsSelected { get; set; }
+
+            public AllergenSelection()
             {
-                allergen.IsSelected = !allergen.IsSelected;
+                Name = string.Empty;
+            }
+        }
+
+        public Entree EntreeData { get; private set; }
+        public List<EntreeComponent> EntreeComponents { get; private set; }
+
+        private string restaurantId;
+        private FirestoreDb? db = FirestoreService.Db;
+        private List<IngredientCsvRecord>? masterIngredientList;
+        private List<string> topAllergens = new List<string> { "Milk", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soy", "Vegan", "Vegetarian", "Halal", "Kosher" };
+        private List<AllergenSelection> Allergens { get; set; }
+        private string? _uploadedPhotoUrl;
+
+        public AddEntreePage(string currentRestaurantId, Entree? entreeToEdit = null)
+        {
+            InitializeComponent();
+            BindingContext = this;
+            restaurantId = currentRestaurantId;
+
+            EntreeData = entreeToEdit ?? new Entree();
+            _uploadedPhotoUrl = EntreeData.PhotoUrl;
+            EntreeComponents = entreeToEdit?.Components ?? new List<EntreeComponent>();
+
+            Allergens = topAllergens.Select(a => new AllergenSelection { Name = a, IsSelected = EntreeData.Allergens?.Contains(a) ?? false }).ToList();
+
+            foreach (var allergen in Allergens)
+            {
+                var chip = new Button { Text = allergen.Name };
                 if (Application.Current?.Resources != null)
                 {
+                    chip.Style = (Style)Application.Current.Resources["ChipStyle"];
                     chip.BackgroundColor = allergen.IsSelected ? (Color)Application.Current.Resources["Accent"] : (Color)Application.Current.Resources["Secondary"];
                 }
-            };
-            AllergensLayout.Children.Add(chip);
-        }
-
-        LoadUnitDropdowns();
-        DirectionsEditor.TextChanged += OnDirectionsEditorTextChanged;
-
-        if (entreeToEdit == null)
-        {
-            DirectionsEditor.Text = "1. ";
-        }
-        else
-        {
-            if (entreeToEdit.Name != null) EntreeNameEntry.Text = entreeToEdit.Name;
-            YieldEntry.Text = entreeToEdit.Yield.ToString();
-            PlatePriceEntry.Text = entreeToEdit.PlatePrice.ToString();
-            if (entreeToEdit.Directions != null) DirectionsEditor.Text = entreeToEdit.Directions;
-            if (entreeToEdit.YieldUnit != null) YieldUnitPicker.SelectedItem = entreeToEdit.YieldUnit;
-            else YieldUnitPicker.SelectedIndex = -1;
-            PreviewImage.Source = entreeToEdit.PhotoUrl;
-            RefreshComponentsGrid();
-        }
-    }
-
-    protected override async void OnAppearing()
-    {
-        base.OnAppearing();
-        await LoadMasterIngredients();
-        UpdateCostingSummary();
-    }
-
-    private void OnComponentSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        SelectedComponent = e.CurrentSelection.FirstOrDefault() as EntreeComponent;
-    }
-
-    private void OnComponentDoubleTapped(object sender, TappedEventArgs e)
-    {
-        if (e.Parameter is EntreeComponent tappedComponent)
-        {
-            SelectedComponent = tappedComponent;
-            OnEditComponentClicked(sender, e);
-        }
-    }
-
-    private void OnYieldChanged(object sender, EventArgs e)
-    {
-        UpdateCostingSummary();
-    }
-
-    private async Task UpdateCostingSummary()
-    {
-        if (masterIngredientList == null)
-        {
-            await LoadMasterIngredients();
-        }
-
-        double totalCost = 0;
-        if (masterIngredientList != null)
-        {
-            foreach (var entreeComponent in EntreeComponents)
-            {
-                var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
-                if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
+                chip.Clicked += (s, e) =>
                 {
-                    try
+                    allergen.IsSelected = !allergen.IsSelected;
+                    if (Application.Current?.Resources != null)
                     {
-                        totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
+                        chip.BackgroundColor = allergen.IsSelected ? (Color)Application.Current.Resources["Accent"] : (Color)Application.Current.Resources["Secondary"];
                     }
-                    catch (ArgumentException)
-                    {
-                        // Ignore for live summary
-                    }
-                }
+                };
+                AllergensLayout.Children.Add(chip);
             }
-        }
 
-        TotalCostLabel.Text = totalCost.ToString("C");
+            LoadUnitDropdowns();
+            DirectionsEditor.TextChanged += OnDirectionsEditorTextChanged;
 
-        double.TryParse(PlatePriceEntry.Text, out double platePrice);
-        double foodCostPercentage = (platePrice > 0) ? (totalCost / platePrice) : 0;
-        FoodCostPercentageLabel.Text = foodCostPercentage.ToString("P2");
-    }
-
-    private void OnDirectionsEditorTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (sender is Editor editor && editor.Text.Contains(Environment.NewLine))
-        {
-            editor.Text = editor.Text.Replace(Environment.NewLine, "");
-            OnAddStepClicked(this, EventArgs.Empty);
-        }
-    }
-
-    private async void OnUploadImageClicked(object sender, EventArgs e)
-    {
-        await AuthService.RefreshAuthTokenIfNeededAsync(); // Added token refresh
-
-        try
-        {
-            var result = await FilePicker.PickAsync(new PickOptions { PickerTitle = "Please select an image file", FileTypes = FilePickerFileType.Images });
-            if (result != null)
+            if (entreeToEdit == null)
             {
-                using var stream = await result.OpenReadAsync();
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(result.FileName)}";
-                var downloadUrl = await FirebaseStorageService.UploadImageAsync(stream, fileName);
-                _uploadedPhotoUrl = downloadUrl;
-                PreviewImage.Source = ImageSource.FromUri(new Uri(downloadUrl));
+                DirectionsEditor.Text = "1. ";
+            }
+            else
+            {
+                if (entreeToEdit.Name != null) EntreeNameEntry.Text = entreeToEdit.Name;
+                YieldEntry.Text = entreeToEdit.Yield.ToString();
+                PlatePriceEntry.Text = entreeToEdit.PlatePrice.ToString();
+                if (entreeToEdit.Directions != null) DirectionsEditor.Text = entreeToEdit.Directions;
+                if (entreeToEdit.YieldUnit != null) YieldUnitPicker.SelectedItem = entreeToEdit.YieldUnit;
+                else YieldUnitPicker.SelectedIndex = -1;
+                PreviewImage.Source = entreeToEdit.PhotoUrl;
+                RefreshComponentsGrid();
             }
         }
-        catch (Exception ex)
+
+        protected override async void OnAppearing()
         {
-            await DisplayAlert("Error", $"Image upload failed: {ex.Message}", "OK");
+            base.OnAppearing();
+            await LoadMasterIngredients();
+            await UpdateCostingSummary();
         }
-    }
 
-    private void OnAddStepClicked(object sender, EventArgs e)
-    {
-        DirectionsEditor.TextChanged -= OnDirectionsEditorTextChanged;
-
-        var text = DirectionsEditor.Text;
-        int lastNumber = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(line => !string.IsNullOrWhiteSpace(line))
-            .Select(line => {
-                var parts = line.Trim().Split('.');
-                int.TryParse(parts.FirstOrDefault(), out int num);
-                return num;
-            })
-            .DefaultIfEmpty(0)
-            .Max();
-
-        if (!string.IsNullOrEmpty(text) && !text.EndsWith(Environment.NewLine))
+        private void OnComponentSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            DirectionsEditor.Text += Environment.NewLine;
+            SelectedComponent = e.CurrentSelection.FirstOrDefault() as EntreeComponent;
         }
-        DirectionsEditor.Text += $"{lastNumber + 1}. ";
-        DirectionsEditor.Focus();
 
-        DirectionsEditor.TextChanged += OnDirectionsEditorTextChanged;
-    }
-
-    private void LoadUnitDropdowns()
-    {
-        var allUnits = UnitConverter.GetAllUnitNames();
-        UnitPicker.ItemsSource = new List<string>(allUnits);
-        DisplayUnitPicker.ItemsSource = new List<string>(allUnits);
-        YieldUnitPicker.ItemsSource = new List<string>(allUnits);
-    }
-    private async void OnSaveClicked(object sender, EventArgs e)
-    {
-        try
+        private void OnComponentDoubleTapped(object sender, TappedEventArgs e)
         {
-            if (EntreeData == null) EntreeData = new Entree();
-            double.TryParse(YieldEntry.Text, out double yield);
-            if (yield == 0) yield = 1;
-            double.TryParse(PlatePriceEntry.Text, out double platePrice);
-            EntreeData.Name = EntreeNameEntry.Text;
-            EntreeData.Yield = yield;
-            EntreeData.PlatePrice = platePrice;
-            EntreeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
-            EntreeData.Directions = DirectionsEditor.Text;
-            EntreeData.Components = EntreeComponents;
-            EntreeData.RestaurantId = restaurantId;
-            EntreeData.Allergens = Allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
-            EntreeData.PhotoUrl = _uploadedPhotoUrl;
+            if (e.Parameter is EntreeComponent tappedComponent)
+            {
+                SelectedComponent = tappedComponent;
+                OnEditComponentClicked(sender, e);
+            }
+        }
+
+        private async void OnYieldChanged(object sender, EventArgs e)
+        {
+            await UpdateCostingSummary();
+        }
+
+        private async Task UpdateCostingSummary()
+        {
+            if (masterIngredientList == null)
+            {
+                await LoadMasterIngredients();
+            }
 
             double totalCost = 0;
             if (masterIngredientList != null)
@@ -241,180 +133,289 @@ public partial class AddEntreePage : ContentPage, INotifyPropertyChanged
                     var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
                     if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
                     {
-                        totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
+                        try
+                        {
+                            totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
+                        }
+                        catch (ArgumentException)
+                        {
+                            // Ignore for live summary
+                        }
                     }
                 }
             }
-            EntreeData.FoodCost = totalCost;
-            if (platePrice > 0) EntreeData.Price = totalCost / platePrice;
-            else EntreeData.Price = 0;
 
-            if (SessionService.IsOffline)
+            TotalCostLabel.Text = totalCost.ToString("C");
+
+            double.TryParse(PlatePriceEntry.Text, out double platePrice);
+            double foodCostPercentage = (platePrice > 0) ? (totalCost / platePrice) : 0;
+            FoodCostPercentageLabel.Text = foodCostPercentage.ToString("P2");
+        }
+
+        private void OnDirectionsEditorTextChanged(object? sender, TextChangedEventArgs e)
+        {
+            if (sender is Editor editor && editor.Text.Contains(Environment.NewLine))
             {
-                var entrees = await LocalStorageService.LoadAsync<Entree>(restaurantId);
-                if (string.IsNullOrEmpty(EntreeData.Id))
+                editor.Text = editor.Text.Replace(Environment.NewLine, "");
+                OnAddStepClicked(this, EventArgs.Empty);
+            }
+        }
+
+        private async void OnUploadImageClicked(object sender, EventArgs e)
+        {
+            await AuthService.RefreshAuthTokenIfNeededAsync(); // Added token refresh
+
+            try
+            {
+                var result = await FilePicker.PickAsync(new PickOptions { PickerTitle = "Please select an image file", FileTypes = FilePickerFileType.Images });
+                if (result != null)
                 {
-                    EntreeData.Id = Guid.NewGuid().ToString();
-                    entrees.Add(EntreeData);
+                    using var stream = await result.OpenReadAsync();
+                    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(result.FileName)}";
+                    var downloadUrl = await FirebaseStorageService.UploadImageAsync(stream, fileName);
+                    _uploadedPhotoUrl = downloadUrl;
+                    PreviewImage.Source = ImageSource.FromUri(new Uri(downloadUrl));
                 }
-                else
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"Image upload failed: {ex.Message}", "OK");
+            }
+        }
+
+        private void OnAddStepClicked(object sender, EventArgs e)
+        {
+            DirectionsEditor.TextChanged -= OnDirectionsEditorTextChanged;
+
+            var text = DirectionsEditor.Text;
+            int lastNumber = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .Select(line => {
+                    var parts = line.Trim().Split('.');
+                    int.TryParse(parts.FirstOrDefault(), out int num);
+                    return num;
+                })
+                .DefaultIfEmpty(0)
+                .Max();
+
+            if (!string.IsNullOrEmpty(text) && !text.EndsWith(Environment.NewLine))
+            {
+                DirectionsEditor.Text += Environment.NewLine;
+            }
+            DirectionsEditor.Text += $"{lastNumber + 1}. ";
+            DirectionsEditor.Focus();
+
+            DirectionsEditor.TextChanged += OnDirectionsEditorTextChanged;
+        }
+
+        private void LoadUnitDropdowns()
+        {
+            var allUnits = UnitConverter.GetAllUnitNames();
+            UnitPicker.ItemsSource = new List<string>(allUnits);
+            DisplayUnitPicker.ItemsSource = new List<string>(allUnits);
+            YieldUnitPicker.ItemsSource = new List<string>(allUnits);
+        }
+        private async void OnSaveClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                if (EntreeData == null) EntreeData = new Entree();
+                double.TryParse(YieldEntry.Text, out double yield);
+                if (yield == 0) yield = 1;
+                double.TryParse(PlatePriceEntry.Text, out double platePrice);
+                EntreeData.Name = EntreeNameEntry.Text;
+                EntreeData.Yield = yield;
+                EntreeData.PlatePrice = platePrice;
+                EntreeData.YieldUnit = YieldUnitPicker.SelectedItem?.ToString() ?? "";
+                EntreeData.Directions = DirectionsEditor.Text;
+                EntreeData.Components = EntreeComponents;
+                EntreeData.RestaurantId = restaurantId;
+                EntreeData.Allergens = Allergens.Where(a => a.IsSelected).Select(a => a.Name).ToList();
+                EntreeData.PhotoUrl = _uploadedPhotoUrl;
+
+                double totalCost = 0;
+                if (masterIngredientList != null)
                 {
-                    var existing = entrees.FirstOrDefault(e => e.Id == EntreeData.Id);
-                    if (existing != null)
+                    foreach (var entreeComponent in EntreeComponents)
                     {
-                        var index = entrees.IndexOf(existing);
-                        entrees[index] = EntreeData;
+                        var masterIngredient = masterIngredientList.FirstOrDefault(i => i.Id == entreeComponent.ComponentId);
+                        if (masterIngredient != null && !string.IsNullOrEmpty(masterIngredient.Unit) && !string.IsNullOrEmpty(entreeComponent.Unit))
+                        {
+                            totalCost += UnitConverter.Convert(entreeComponent.Quantity, entreeComponent.Unit, masterIngredient.CaseQuantity, masterIngredient.Unit, masterIngredient.CasePrice);
+                        }
+                    }
+                }
+                EntreeData.FoodCost = totalCost;
+                if (platePrice > 0) EntreeData.Price = totalCost / platePrice;
+                else EntreeData.Price = 0;
+
+                if (SessionService.IsOffline)
+                {
+                    var entrees = await LocalStorageService.LoadAsync<Entree>(restaurantId);
+                    if (string.IsNullOrEmpty(EntreeData.Id))
+                    {
+                        EntreeData.Id = Guid.NewGuid().ToString();
+                        entrees.Add(EntreeData);
                     }
                     else
                     {
-                        entrees.Add(EntreeData);
+                        var existing = entrees.FirstOrDefault(e => e.Id == EntreeData.Id);
+                        if (existing != null)
+                        {
+                            var index = entrees.IndexOf(existing);
+                            entrees[index] = EntreeData;
+                        }
+                        else
+                        {
+                            entrees.Add(EntreeData);
+                        }
+                    }
+                    await LocalStorageService.SaveAsync(entrees, restaurantId);
+                }
+                else
+                {
+                    db = FirestoreService.Db;
+                    if (db == null || restaurantId == null) return;
+                    var collection = db.Collection("entrees");
+                    if (string.IsNullOrEmpty(EntreeData.Id))
+                    {
+                        await collection.AddAsync(EntreeData);
+                    }
+                    else
+                    {
+                        await collection.Document(EntreeData.Id).SetAsync(EntreeData, SetOptions.Overwrite);
                     }
                 }
-                await LocalStorageService.SaveAsync(entrees, restaurantId);
+
+                await Navigation.PopAsync();
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"An unexpected error occurred while saving: {ex.Message}", "OK");
+            }
+        }
+
+        private async Task LoadMasterIngredients()
+        {
+            if (SessionService.IsOffline)
+            {
+                masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>();
             }
             else
             {
                 db = FirestoreService.Db;
                 if (db == null || restaurantId == null) return;
-                var collection = db.Collection("entrees");
-                if (string.IsNullOrEmpty(EntreeData.Id))
-                {
-                    await collection.AddAsync(EntreeData);
-                }
-                else
-                {
-                    await collection.Document(EntreeData.Id).SetAsync(EntreeData, SetOptions.Overwrite);
-                }
+                var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
+                var snapshot = await ingredientsCollection.GetSnapshotAsync();
+                masterIngredientList = snapshot.Documents.Select(doc => {
+                    var ing = doc.ConvertTo<IngredientCsvRecord>();
+                    ing.Id = doc.Id;
+                    return ing;
+                }).ToList();
             }
 
+            if (masterIngredientList == null) return;
+            var displayList = masterIngredientList.Select(ing => new EntreeComponentDisplay
+            {
+                DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : ing.ItemName ?? string.Empty,
+                OriginalIngredient = ing
+            }).OrderBy(d => d.DisplayName).ToList();
+            ComponentPicker.ItemsSource = displayList;
+            ComponentPicker.ItemDisplayBinding = new Binding("DisplayName");
+        }
+
+        private void OnComponentPicker_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (ComponentPicker.SelectedItem is EntreeComponentDisplay selectedComponentDisplay)
+            {
+                var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
+                if (selectedMasterIngredient != null && !string.IsNullOrEmpty(selectedMasterIngredient.Unit))
+                {
+                    string? category = UnitConverter.GetCategoryForUnit(selectedMasterIngredient.Unit);
+                    if (category != null)
+                    {
+                        UnitPicker.ItemsSource = UnitConverter.GetUnitsForCategory(category);
+                    }
+                }
+            }
+        }
+
+        private async void OnAddComponentClicked(object sender, EventArgs e)
+        {
+            if (ComponentPicker.SelectedItem == null) { return; }
+            if (!double.TryParse(QuantityEntry.Text, out double quantity) || quantity <= 0) { return; }
+            if (UnitPicker.SelectedItem == null)
+            {
+                await DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
+                return;
+            }
+
+            var selectedComponentDisplay = ComponentPicker.SelectedItem as EntreeComponentDisplay;
+            if (selectedComponentDisplay?.OriginalIngredient == null) return;
+            var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
+            var componentToAdd = new EntreeComponent
+            {
+                ComponentId = selectedMasterIngredient.Id,
+                Name = !string.IsNullOrEmpty(selectedMasterIngredient.AliasName) ? selectedMasterIngredient.AliasName : selectedMasterIngredient.ItemName ?? string.Empty,
+                Quantity = quantity,
+                Unit = UnitPicker.SelectedItem.ToString(),
+                DisplayQuantity = double.TryParse(DisplayQuantityEntry.Text, out double displayQuantity) ? displayQuantity : quantity,
+                DisplayUnit = DisplayUnitPicker.SelectedItem?.ToString() ?? UnitPicker.SelectedItem.ToString()
+            };
+            EntreeComponents.Add(componentToAdd);
+            await RefreshComponentsGrid();
+        }
+
+        private async void OnDeleteComponentClicked(object sender, EventArgs e)
+        {
+            if (SelectedComponent == null)
+            {
+                await DisplayAlert("No Selection", "Please select an component to delete.", "OK");
+                return;
+            }
+
+            bool answer = await DisplayAlert("Confirm", $"Are you sure you want to delete {SelectedComponent.Name}?", "Yes", "No");
+            if (answer)
+            {
+                EntreeComponents.Remove(SelectedComponent);
+                await RefreshComponentsGrid();
+            }
+        }
+
+        private async void OnEditComponentClicked(object sender, EventArgs e)
+        {
+            if (SelectedComponent == null)
+            {
+                await DisplayAlert("No Selection", "Please select a component to edit.", "OK");
+                return;
+            }
+            var componentToEdit = SelectedComponent;
+            var componentDisplay = ComponentPicker.ItemsSource.Cast<EntreeComponentDisplay>().FirstOrDefault(i => i.OriginalIngredient?.Id == componentToEdit.ComponentId);
+            if (componentDisplay != null) ComponentPicker.SelectedItem = componentDisplay;
+            QuantityEntry.Text = componentToEdit.Quantity.ToString();
+            UnitPicker.SelectedItem = componentToEdit.Unit;
+            DisplayQuantityEntry.Text = componentToEdit.DisplayQuantity.ToString();
+            DisplayUnitPicker.SelectedItem = componentToEdit.DisplayUnit;
+            EntreeComponents.Remove(componentToEdit);
+            await RefreshComponentsGrid();
+        }
+
+        private async Task RefreshComponentsGrid()
+        {
+            ComponentsCollection.ItemsSource = null;
+            ComponentsCollection.ItemsSource = new List<EntreeComponent>(EntreeComponents);
+            await UpdateCostingSummary();
+        }
+
+        private async void OnCancelClicked(object sender, EventArgs e)
+        {
             await Navigation.PopAsync();
         }
-        catch (Exception ex)
+
+        public new event PropertyChangedEventHandler? PropertyChanged;
+        protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
-            await DisplayAlert("Error", $"An unexpected error occurred while saving: {ex.Message}", "OK");
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-    }
-
-    private async Task LoadMasterIngredients()
-    {
-        if (SessionService.IsOffline)
-        {
-            masterIngredientList = await LocalStorageService.LoadAsync<IngredientCsvRecord>();
-        }
-        else
-        {
-            db = FirestoreService.Db;
-            if (db == null || restaurantId == null) return;
-            var ingredientsCollection = db.Collection("restaurants").Document(restaurantId).Collection("ingredients");
-            var snapshot = await ingredientsCollection.GetSnapshotAsync();
-            masterIngredientList = snapshot.Documents.Select(doc => {
-                var ing = doc.ConvertTo<IngredientCsvRecord>();
-                ing.Id = doc.Id;
-                return ing;
-            }).ToList();
-        }
-
-        if (masterIngredientList == null) return;
-        var displayList = masterIngredientList.Select(ing => new EntreeComponentDisplay
-        {
-            DisplayName = !string.IsNullOrEmpty(ing.AliasName) ? ing.AliasName : ing.ItemName ?? string.Empty,
-            OriginalIngredient = ing
-        }).OrderBy(d => d.DisplayName).ToList();
-        ComponentPicker.ItemsSource = displayList;
-        ComponentPicker.ItemDisplayBinding = new Binding("DisplayName");
-    }
-
-    private void OnComponentPicker_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (ComponentPicker.SelectedItem is EntreeComponentDisplay selectedComponentDisplay)
-        {
-            var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
-            if (selectedMasterIngredient != null && !string.IsNullOrEmpty(selectedMasterIngredient.Unit))
-            {
-                string? category = UnitConverter.GetCategoryForUnit(selectedMasterIngredient.Unit);
-                if (category != null)
-                {
-                    UnitPicker.ItemsSource = UnitConverter.GetUnitsForCategory(category);
-                }
-            }
-        }
-    }
-
-    private void OnAddComponentClicked(object sender, EventArgs e)
-    {
-        if (ComponentPicker.SelectedItem == null) { return; }
-        if (!double.TryParse(QuantityEntry.Text, out double quantity) || quantity <= 0) { return; }
-        if (UnitPicker.SelectedItem == null)
-        {
-            DisplayAlert("Unit Not Selected", "Please select a unit for costing.", "OK");
-            return;
-        }
-
-        var selectedComponentDisplay = ComponentPicker.SelectedItem as EntreeComponentDisplay;
-        if (selectedComponentDisplay?.OriginalIngredient == null) return;
-        var selectedMasterIngredient = selectedComponentDisplay.OriginalIngredient;
-        var componentToAdd = new EntreeComponent
-        {
-            ComponentId = selectedMasterIngredient.Id,
-            Name = !string.IsNullOrEmpty(selectedMasterIngredient.AliasName) ? selectedMasterIngredient.AliasName : selectedMasterIngredient.ItemName ?? string.Empty,
-            Quantity = quantity,
-            Unit = UnitPicker.SelectedItem.ToString(),
-            DisplayQuantity = double.TryParse(DisplayQuantityEntry.Text, out double displayQuantity) ? displayQuantity : quantity,
-            DisplayUnit = DisplayUnitPicker.SelectedItem?.ToString() ?? UnitPicker.SelectedItem.ToString()
-        };
-        EntreeComponents.Add(componentToAdd);
-        RefreshComponentsGrid();
-    }
-
-    private async void OnDeleteComponentClicked(object sender, EventArgs e)
-    {
-        if (SelectedComponent == null)
-        {
-            await DisplayAlert("No Selection", "Please select an component to delete.", "OK");
-            return;
-        }
-
-        bool answer = await DisplayAlert("Confirm", $"Are you sure you want to delete {SelectedComponent.Name}?", "Yes", "No");
-        if (answer)
-        {
-            EntreeComponents.Remove(SelectedComponent);
-            RefreshComponentsGrid();
-        }
-    }
-
-    private void OnEditComponentClicked(object sender, EventArgs e)
-    {
-        if (SelectedComponent == null)
-        {
-            DisplayAlert("No Selection", "Please select a component to edit.", "OK");
-            return;
-        }
-        var componentToEdit = SelectedComponent;
-        var componentDisplay = ComponentPicker.ItemsSource.Cast<EntreeComponentDisplay>().FirstOrDefault(i => i.OriginalIngredient?.Id == componentToEdit.ComponentId);
-        if (componentDisplay != null) ComponentPicker.SelectedItem = componentDisplay;
-        QuantityEntry.Text = componentToEdit.Quantity.ToString();
-        UnitPicker.SelectedItem = componentToEdit.Unit;
-        DisplayQuantityEntry.Text = componentToEdit.DisplayQuantity.ToString();
-        DisplayUnitPicker.SelectedItem = componentToEdit.DisplayUnit;
-        EntreeComponents.Remove(componentToEdit);
-        RefreshComponentsGrid();
-    }
-
-    private void RefreshComponentsGrid()
-    {
-        ComponentsCollection.ItemsSource = null;
-        ComponentsCollection.ItemsSource = new List<EntreeComponent>(EntreeComponents);
-        UpdateCostingSummary();
-    }
-
-    private async void OnCancelClicked(object sender, EventArgs e)
-    {
-        await Navigation.PopAsync();
-    }
-
-    public new event PropertyChangedEventHandler? PropertyChanged;
-    protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
