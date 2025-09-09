@@ -15,7 +15,19 @@ namespace Freecost
         public static string? UserRole { get; set; }
         public static string? CurrentUserEmail { get; set; }
         public static List<Restaurant>? PermittedRestaurants { get; set; }
-        public static Restaurant? CurrentRestaurant { get; set; }
+        private static Restaurant? _currentRestaurant;
+        public static Restaurant? CurrentRestaurant
+        {
+            get => _currentRestaurant;
+            set
+            {
+                if (_currentRestaurant != value)
+                {
+                    _currentRestaurant = value;
+                    OnStaticPropertyChanged();
+                }
+            }
+        }
         public static bool IsOffline { get; set; }
         public static string? DefaultRestaurantId { get; set; }
 
@@ -108,6 +120,7 @@ namespace Freecost
             OnStaticPropertyChanged(nameof(IsNotLoggedIn));
             OnStaticPropertyChanged(nameof(IsAdmin));
             OnStaticPropertyChanged(nameof(StatusText));
+            OnStaticPropertyChanged(nameof(CurrentRestaurant));
         }
     }
 }

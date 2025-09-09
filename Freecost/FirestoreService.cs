@@ -144,7 +144,11 @@ namespace Freecost
                             var netObj = new JObject();
                             foreach (var fieldProp in jObjectFields.Properties())
                             {
-                                netObj.Add(fieldProp.Name, UnwrapFirestoreValue(fieldProp.Value));
+                                var unwrappedValue = UnwrapFirestoreValue(fieldProp.Value);
+                                if (unwrappedValue != null)
+                                {
+                                    netObj.Add(fieldProp.Name, unwrappedValue);
+                                }
                             }
                             return netObj;
                         }
@@ -157,7 +161,11 @@ namespace Freecost
                             var netArray = new JArray();
                             foreach (var item in jArray)
                             {
-                                netArray.Add(UnwrapFirestoreValue(item));
+                                var unwrappedValue = UnwrapFirestoreValue(item);
+                                if (unwrappedValue != null)
+                                {
+                                    netArray.Add(unwrappedValue);
+                                }
                             }
                             return netArray;
                         }

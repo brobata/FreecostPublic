@@ -74,20 +74,20 @@ namespace Freecost
         private async Task LoadIngredients()
         {
             restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (restaurantId == null) return;
-
-            var ingredientsList = SessionService.IsOffline
-                ? await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId)
-                : await FirestoreService.GetCollectionAsync<IngredientCsvRecord>($"restaurants/{restaurantId}/ingredients", SessionService.AuthToken);
-
-            if (!SessionService.IsOffline)
+            if (restaurantId == null)
             {
-                await LocalStorageService.SaveAsync(ingredientsList, restaurantId);
+                _allIngredients = new List<IngredientDisplayRecord>();
+                SortAndFilter();
+                return;
             }
+
+            // Always load from local storage first for immediate UI updates.
+            var ingredientsList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
 
             _allIngredients = ingredientsList.Select(MapToDisplayRecord).ToList();
             SortAndFilter();
         }
+
 
         private void PopulateGrid()
         {
@@ -300,9 +300,7 @@ namespace Freecost
 
                 if (records.Any())
                 {
-                    List<IngredientCsvRecord> existingIngredients = SessionService.IsOffline
-                        ? await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId)
-                        : await FirestoreService.GetCollectionAsync<IngredientCsvRecord>($"restaurants/{restaurantId}/ingredients", SessionService.AuthToken);
+                    List<IngredientCsvRecord> existingIngredients = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
 
                     var existingIngredientsBySku = existingIngredients.Where(i => !string.IsNullOrEmpty(i.SKU)).ToDictionary(i => i.SKU!, i => i);
                     var ingredientsToUpdate = new List<IngredientCsvRecord>();
@@ -324,18 +322,6 @@ namespace Freecost
 
                     var combinedList = existingIngredients.Concat(ingredientsToAdd).ToList();
                     await LocalStorageService.SaveAsync(combinedList, restaurantId);
-
-                    if (!SessionService.IsOffline)
-                    {
-                        foreach (var item in ingredientsToUpdate)
-                        {
-                            await FirestoreService.SetDocumentAsync($"restaurants/{restaurantId}/ingredients/{item.Id}", item, SessionService.AuthToken);
-                        }
-                        foreach (var item in ingredientsToAdd)
-                        {
-                            await FirestoreService.AddDocumentAsync($"restaurants/{restaurantId}/ingredients", item, SessionService.AuthToken);
-                        }
-                    }
 
                     await DisplayAlert("Import Complete", $"{ingredientsToAdd.Count} ingredients created.\n{ingredientsToUpdate.Count} ingredients updated.", "OK");
                     await LoadIngredients();
@@ -379,7 +365,7 @@ namespace Freecost
             int bestHeaderRow = -1;
             int bestMatchCount = 0;
             List<string> bestHeaders = new();
-            const int rowsToScan = 5;
+            const int rowsToScan = 10;
             var lines = new List<string>();
             using (var reader = new StreamReader(stream, leaveOpen: true))
             {
@@ -397,7 +383,7 @@ namespace Freecost
                         try
                         {
                             var potentialHeaders = new List<string>();
-                            for (int j = 0; j < csv.Parser.Count; j++) { potentialHeaders.Add(csv.GetField(j) ?? string.Empty); }
+                            for (int j = 0; j < csv.Parser.Count; j++) { potentialHeaders.Add(csv.GetField(j)?.Trim() ?? string.Empty); }
                             var lowerCaseHeaders = potentialHeaders.Select(h => h.ToLowerInvariant()).ToList();
                             if (map.FieldMappings != null && map.FieldMappings.Any())
                             {
@@ -410,7 +396,7 @@ namespace Freecost
                 }
             }
             stream.Position = 0;
-            return bestMatchCount < 2 ? (null, -1, new List<string>()) : (bestMap, bestHeaderRow, bestHeaders);
+            return bestMatchCount > 2 ? (bestMap, bestHeaderRow, bestHeaders) : (null, -1, new List<string>());
         }
 
         private (ImportMap? map, int headerRow, List<string> headers) FindBestMapForExcel(ExcelPackage package, List<ImportMap> maps)
@@ -421,7 +407,7 @@ namespace Freecost
             int excelBestHeaderRow = -1;
             int excelBestMatchCount = 0;
             List<string> excelBestHeaders = new();
-            const int rowsToScan = 5;
+            const int rowsToScan = 10;
             for (int i = 1; i <= rowsToScan && i <= worksheet.Dimension.End.Row; i++)
             {
                 var potentialHeaders = new List<string>();
@@ -436,7 +422,7 @@ namespace Freecost
                     }
                 }
             }
-            return (excelBestMap, excelBestHeaderRow, excelBestHeaders);
+            return excelBestMatchCount > 2 ? (excelBestMap, excelBestHeaderRow, excelBestHeaders) : (null, -1, new List<string>());
         }
 
         private List<IngredientCsvRecord> ProcessExcelPackage(ExcelPackage package, List<string> headers, ImportMap selectedMap)
@@ -445,31 +431,49 @@ namespace Freecost
             var worksheet = package.Workbook.Worksheets.FirstOrDefault();
             if (worksheet == null) return records;
 
+            var headerIndexes = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < headers.Count; i++)
+            {
+                var trimmedHeader = headers[i].Trim();
+                if (!string.IsNullOrEmpty(trimmedHeader) && !headerIndexes.ContainsKey(trimmedHeader))
+                {
+                    headerIndexes[trimmedHeader] = i + 1;
+                }
+            }
+
             var startRow = selectedMap.HeaderRow > 0 ? selectedMap.HeaderRow + 1 : 2;
 
             for (int row = startRow; row <= worksheet.Dimension.End.Row; row++)
             {
                 var record = new IngredientCsvRecord { SupplierName = selectedMap.SupplierName };
-                if (selectedMap.FieldMappings != null)
+
+                string GetCellValue(string fieldName)
                 {
-                    if (selectedMap.FieldMappings.TryGetValue("ItemName", out var itemNameHeader) && itemNameHeader != null)
-                        record.ItemName = worksheet.Cells[row, headers.IndexOf(GetActualHeader(itemNameHeader, headers)) + 1].Text;
-                    if (selectedMap.FieldMappings.TryGetValue("AliasName", out var aliasNameHeader) && !string.IsNullOrEmpty(aliasNameHeader) && headers.IndexOf(GetActualHeader(aliasNameHeader, headers)) != -1)
-                        record.AliasName = worksheet.Cells[row, headers.IndexOf(GetActualHeader(aliasNameHeader, headers)) + 1].Text;
-                    else
-                        record.AliasName = string.Empty;
-                    if (selectedMap.FieldMappings.TryGetValue("CasePrice", out var casePriceHeader) && casePriceHeader != null)
+                    if (selectedMap.FieldMappings != null &&
+                        selectedMap.FieldMappings.TryGetValue(fieldName, out var header) &&
+                        !string.IsNullOrEmpty(header) &&
+                        headerIndexes.TryGetValue(header.Trim(), out var colIndex))
                     {
-                        if (double.TryParse(worksheet.Cells[row, headers.IndexOf(GetActualHeader(casePriceHeader, headers)) + 1].Text, NumberStyles.Currency, CultureInfo.GetCultureInfo("en-US"), out double price))
-                            record.CasePrice = price;
+                        return worksheet.Cells[row, colIndex].Text;
                     }
-                    if (selectedMap.FieldMappings.TryGetValue("SKU", out var skuHeader) && skuHeader != null)
-                        record.SKU = worksheet.Cells[row, headers.IndexOf(GetActualHeader(skuHeader, headers)) + 1].Text;
+                    return string.Empty;
                 }
+
+                record.ItemName = GetCellValue("ItemName");
+                if (string.IsNullOrWhiteSpace(record.ItemName)) continue;
+
+                record.AliasName = GetCellValue("AliasName");
+                record.SKU = GetCellValue("SKU");
+
+                if (double.TryParse(GetCellValue("CasePrice"), NumberStyles.Currency, CultureInfo.InvariantCulture, out double price))
+                {
+                    record.CasePrice = price;
+                }
+
                 if (!string.IsNullOrEmpty(selectedMap.CombinedQuantityUnitColumn) && !string.IsNullOrEmpty(selectedMap.SplitCharacter))
                 {
-                    var combined = worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.CombinedQuantityUnitColumn, headers)) + 1].Text;
-                    if (combined != null)
+                    var combined = GetCellValue(selectedMap.CombinedQuantityUnitColumn);
+                    if (!string.IsNullOrEmpty(combined))
                     {
                         var parts = combined.Split(new[] { selectedMap.SplitCharacter }, StringSplitOptions.RemoveEmptyEntries);
                         if (parts.Length == 2)
@@ -477,29 +481,29 @@ namespace Freecost
                             var quantityMatch = Regex.Match(parts[0], @"[\d\.]+");
                             if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
                                 record.CaseQuantity = quantity;
-                            record.Unit = Regex.Replace(parts[1], @"[\d\.]+", "").Trim() ?? string.Empty;
+                            record.Unit = Regex.Replace(parts[1], @"[\d\.]+", "").Trim();
                         }
                         else
                         {
                             var quantityMatch = Regex.Match(combined, @"[\d\.]+");
                             if (quantityMatch.Success && double.TryParse(quantityMatch.Value, out double quantity))
                                 record.CaseQuantity = quantity;
-                            record.Unit = Regex.Replace(combined, @"[\d\.]+", "").Trim() ?? string.Empty;
+                            record.Unit = Regex.Replace(combined, @"[\d\.]+", "").Trim();
                         }
                     }
                 }
                 else if (!string.IsNullOrEmpty(selectedMap.PackColumn) && !string.IsNullOrEmpty(selectedMap.SizeColumn))
                 {
-                    if (double.TryParse(worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.PackColumn, headers)) + 1].Text, out double pack))
+                    if (double.TryParse(GetCellValue(selectedMap.PackColumn), out double pack))
                     {
-                        var size = worksheet.Cells[row, headers.IndexOf(GetActualHeader(selectedMap.SizeColumn, headers)) + 1].Text;
-                        if (size != null)
+                        var size = GetCellValue(selectedMap.SizeColumn);
+                        if (!string.IsNullOrEmpty(size))
                         {
                             var sizeMatch = Regex.Match(size, @"[\d\.]+");
                             if (sizeMatch.Success && double.TryParse(sizeMatch.Value, out double sizeQuantity))
                             {
                                 record.CaseQuantity = pack * sizeQuantity;
-                                record.Unit = Regex.Replace(size, @"[\d\.]+", "").Trim() ?? string.Empty;
+                                record.Unit = Regex.Replace(size, @"[\d\.]+", "").Trim();
                             }
                         }
                     }
@@ -508,6 +512,7 @@ namespace Freecost
             }
             return records;
         }
+
 
         private string GetActualHeader(string headerName, List<string> headers)
         {

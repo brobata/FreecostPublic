@@ -47,8 +47,6 @@ namespace Freecost
             {
                 _isFirstAppearance = false;
                 await CheckSessionAndNavigate();
-                // The line below was calling the old method, so we remove it.
-                // await SyncGlobalsIfNeeded(); 
                 await UsagePopupService.CheckAndShowPopupAsync();
             }
         }
@@ -127,8 +125,9 @@ namespace Freecost
             }
         }
 
-        private void OnExitClicked()
+        private async void OnExitClicked()
         {
+            await SettingsPage.SyncDataAsync();
             Application.Current?.Quit();
         }
     }

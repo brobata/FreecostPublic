@@ -82,7 +82,7 @@ public partial class AddIngredientPage : ContentPage
                 Ingredient.Unit
             };
 
-            if (string.IsNullOrEmpty(Ingredient.Id) || ingredients.Any(i => i.Id == Ingredient.Id)) // It's a new item
+            if (string.IsNullOrEmpty(Ingredient.Id)) // It's a new item
             {
                 await FirestoreService.AddDocumentAsync($"restaurants/{restaurantId}/ingredients", ingredientToSave, SessionService.AuthToken);
             }

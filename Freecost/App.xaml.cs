@@ -6,9 +6,26 @@ public partial class App : Application
     {
         InitializeComponent();
 
-
-        // Set the main page to the Shell
         MainPage = new MainShell();
+    }
+
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        var window = base.CreateWindow(activationState);
+
+        // Sync when the app is sent to the background
+        window.Stopped += async (s, e) =>
+        {
+            await SettingsPage.SyncDataAsync();
+        };
+
+        // Sync when the app is being closed on desktop platforms
+        window.Destroying += async (s, e) =>
+        {
+            await SettingsPage.SyncDataAsync();
+        };
+
+        return window;
     }
 
     protected override async void OnStart()

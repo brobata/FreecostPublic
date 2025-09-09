@@ -63,54 +63,34 @@ namespace Freecost
         private async Task LoadRecipes()
         {
             restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (restaurantId == null) return;
-
-            List<RecipeDisplayRecord> recipes;
-            if (SessionService.IsOffline)
+            if (restaurantId == null)
             {
-                var recipeData = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
-                recipes = recipeData.Select(r => new RecipeDisplayRecord
-                {
-                    Id = r.Id,
-                    Name = r.Name,
-                    Yield = r.Yield,
-                    YieldUnit = r.YieldUnit,
-                    Directions = r.Directions,
-                    PhotoUrl = r.PhotoUrl,
-                    RestaurantId = r.RestaurantId,
-                    Allergens = r.Allergens,
-                    Ingredients = r.Ingredients,
-                    FoodCost = r.FoodCost,
-                    Price = r.Price
-                }).ToList();
+                _allRecipes = new List<RecipeDisplayRecord>();
+                SortAndFilterRecipes();
+                return;
             }
-            else
+
+            // Always load from local storage first for immediate UI updates.
+            var recipeData = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
+            var recipes = recipeData.Select(r => new RecipeDisplayRecord
             {
-                // This will need to be a more complex query using the REST API if you filter by restaurantId on the server
-                // For now, we get all and filter locally.
-                var allRecipes = await FirestoreService.GetCollectionAsync<Recipe>("recipes", SessionService.AuthToken);
-                var restaurantRecipes = allRecipes.Where(r => r.RestaurantId == restaurantId).ToList();
+                Id = r.Id,
+                Name = r.Name,
+                Yield = r.Yield,
+                YieldUnit = r.YieldUnit,
+                Directions = r.Directions,
+                PhotoUrl = r.PhotoUrl,
+                RestaurantId = r.RestaurantId,
+                Allergens = r.Allergens,
+                Ingredients = r.Ingredients,
+                FoodCost = r.FoodCost,
+                Price = r.Price
+            }).ToList();
 
-                recipes = restaurantRecipes.Select(r => new RecipeDisplayRecord
-                {
-                    Id = r.Id,
-                    Name = r.Name,
-                    Yield = r.Yield,
-                    YieldUnit = r.YieldUnit,
-                    Directions = r.Directions,
-                    PhotoUrl = r.PhotoUrl,
-                    RestaurantId = r.RestaurantId,
-                    Allergens = r.Allergens,
-                    Ingredients = r.Ingredients,
-                    FoodCost = r.FoodCost,
-                    Price = r.Price
-                }).ToList();
-
-                await LocalStorageService.SaveAsync(recipes.Cast<Recipe>().ToList(), restaurantId);
-            }
             _allRecipes = recipes;
             SortAndFilterRecipes();
         }
+
 
         private async void OnAddRecipeClicked(object sender, EventArgs e)
         {

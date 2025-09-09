@@ -63,50 +63,31 @@ namespace Freecost
         private async Task LoadEntrees()
         {
             restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (restaurantId == null) return;
-
-            List<EntreeDisplayRecord> entrees;
-            if (SessionService.IsOffline)
+            if (restaurantId == null)
             {
-                var entreeData = await LocalStorageService.LoadAsync<Entree>(restaurantId);
-                entrees = entreeData.Select(e => new EntreeDisplayRecord
-                {
-                    Id = e.Id,
-                    Name = e.Name,
-                    Yield = e.Yield,
-                    YieldUnit = e.YieldUnit,
-                    Directions = e.Directions,
-                    PhotoUrl = e.PhotoUrl,
-                    RestaurantId = e.RestaurantId,
-                    Allergens = e.Allergens,
-                    Components = e.Components,
-                    FoodCost = e.FoodCost,
-                    Price = e.Price,
-                    PlatePrice = e.PlatePrice
-                }).ToList();
+                _allEntrees = new List<EntreeDisplayRecord>();
+                SortAndFilterEntrees();
+                return;
             }
-            else
-            {
-                var allEntrees = await FirestoreService.GetCollectionAsync<Entree>("entrees", SessionService.AuthToken);
-                var restaurantEntrees = allEntrees.Where(e => e.RestaurantId == restaurantId).ToList();
 
-                entrees = restaurantEntrees.Select(e => new EntreeDisplayRecord
-                {
-                    Id = e.Id,
-                    Name = e.Name,
-                    Yield = e.Yield,
-                    YieldUnit = e.YieldUnit,
-                    Directions = e.Directions,
-                    PhotoUrl = e.PhotoUrl,
-                    RestaurantId = e.RestaurantId,
-                    Allergens = e.Allergens,
-                    Components = e.Components,
-                    FoodCost = e.FoodCost,
-                    Price = e.Price,
-                    PlatePrice = e.PlatePrice
-                }).ToList();
-                await LocalStorageService.SaveAsync(entrees.Cast<Entree>().ToList(), restaurantId);
-            }
+            // Always load from local storage first for immediate UI updates.
+            var entreeData = await LocalStorageService.LoadAsync<Entree>(restaurantId);
+            var entrees = entreeData.Select(e => new EntreeDisplayRecord
+            {
+                Id = e.Id,
+                Name = e.Name,
+                Yield = e.Yield,
+                YieldUnit = e.YieldUnit,
+                Directions = e.Directions,
+                PhotoUrl = e.PhotoUrl,
+                RestaurantId = e.RestaurantId,
+                Allergens = e.Allergens,
+                Components = e.Components,
+                FoodCost = e.FoodCost,
+                Price = e.Price,
+                PlatePrice = e.PlatePrice
+            }).ToList();
+
             _allEntrees = entrees;
             SortAndFilterEntrees();
         }
@@ -157,7 +138,7 @@ namespace Freecost
         }
 
 
-private void OnEntreeSelected(object sender, SelectedItemChangedEventArgs e)
+        private void OnEntreeSelected(object sender, SelectedItemChangedEventArgs e)
         {
             // First, un-select the previously selected item if it exists
             if (_selectedEntree != null)
