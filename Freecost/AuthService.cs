@@ -16,7 +16,7 @@ namespace Freecost
             if (string.IsNullOrEmpty(SessionService.RefreshToken))
             {
                 // No refresh token available, user needs to log in.
-                GoToLogin();
+                await GoToLogin();
                 return false;
             }
 
@@ -44,29 +44,33 @@ namespace Freecost
                 else
                 {
                     // The refresh token is invalid or expired. Clear session and force re-login.
-                    GoToLogin();
+                    await GoToLogin();
                     return false; // Indicate failure
                 }
             }
             catch (Exception)
             {
                 // Network error or other issue, force re-login.
-                GoToLogin();
+                await GoToLogin();
                 return false; // Indicate failure
             }
         }
 
-        private static void GoToLogin()
+        private static async Task GoToLogin()
         {
-            SessionService.Clear();
+            await SessionService.HandleSessionExpirationAsync();
             if (Application.Current != null)
             {
                 // Ensure this runs on the main UI thread
-                Application.Current.Dispatcher.Dispatch(() =>
+                Application.Current.Dispatcher.Dispatch(async () =>
                 {
-                    Application.Current.MainPage = new NavigationPage(new LoginPage());
+                    if (Application.Current.MainPage != null)
+                    {
+                        await Application.Current.MainPage.DisplayAlert("Session Expired", "Your session has expired. You have been logged out and are now in offline mode.", "OK");
+                    }
                 });
             }
         }
     }
 }
+

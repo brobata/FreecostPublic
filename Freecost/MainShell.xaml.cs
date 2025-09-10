@@ -62,12 +62,15 @@ namespace Freecost
 
         private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
         {
-            OnPropertyChanged(nameof(IsAdmin));
-            OnPropertyChanged(nameof(StatusText));
-            OnPropertyChanged(nameof(IsLoggedIn));
-            OnPropertyChanged(nameof(IsNotLoggedIn));
-            OnPropertyChanged(nameof(CanChangeLocation));
-            OnPropertyChanged(nameof(CurrentLocationName));
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                OnPropertyChanged(nameof(IsAdmin));
+                OnPropertyChanged(nameof(StatusText));
+                OnPropertyChanged(nameof(IsLoggedIn));
+                OnPropertyChanged(nameof(IsNotLoggedIn));
+                OnPropertyChanged(nameof(CanChangeLocation));
+                OnPropertyChanged(nameof(CurrentLocationName));
+            });
         }
 
         private async Task GoToAdminPage()
@@ -90,19 +93,18 @@ namespace Freecost
 
         private async Task OnLoginClicked()
         {
-            if (Application.Current != null)
+            if (Shell.Current != null)
             {
-                await SessionService.Clear();
-                Application.Current.MainPage = new NavigationPage(new LoginPage());
+                await Shell.Current.Navigation.PushModalAsync(new NavigationPage(new LoginPage()));
             }
         }
 
         private async Task OnLogoutClicked()
         {
-            if (Application.Current != null)
+            bool answer = await Shell.Current.DisplayAlert("Logout", "Are you sure you want to log out? Your online data will be synced before switching to offline mode.", "Yes", "No");
+            if (answer)
             {
-                await SessionService.Clear();
-                Application.Current.MainPage = new NavigationPage(new LoginPage());
+                await SessionService.LogoutAsync();
             }
         }
 
@@ -112,3 +114,4 @@ namespace Freecost
         }
     }
 }
+

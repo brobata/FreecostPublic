@@ -11,11 +11,14 @@ public static class LocalStorageService
 
     private static string GetPathFor<T>(string? restaurantId = null)
     {
-        string fileName = typeof(T).Name + ".json";
-        if (!string.IsNullOrEmpty(restaurantId))
+        string typeName = typeof(T).Name;
+        // For global, non-restaurant-specific data that is part of the online experience
+        if (typeName == nameof(Restaurant) || typeName == nameof(UnitConversion) || typeName == nameof(ImportMap))
         {
-            fileName = $"{typeof(T).Name}_{restaurantId}.json";
+            return Path.Combine(_basePath, typeName + ".json");
         }
+
+        string fileName = $"{typeName}_{restaurantId ?? SessionService.LocalDataId}.json";
         return Path.Combine(_basePath, fileName);
     }
 
@@ -42,8 +45,8 @@ public static class LocalStorageService
         await SaveAsync(allData.Ingredients, restaurantId);
         await SaveAsync(allData.Recipes, restaurantId);
         await SaveAsync(allData.Entrees, restaurantId);
-        await SaveAsync(allData.ImportMaps); // Maps are global
-        await SaveAsync(allData.UnitConversions); // Conversions are global
+        await SaveAsync(allData.ImportMaps);
+        await SaveAsync(allData.UnitConversions);
     }
 
     public static async Task<AllData> GetAllDataAsync(string restaurantId)
@@ -53,18 +56,21 @@ public static class LocalStorageService
             Ingredients = await LoadAsync<IngredientCsvRecord>(restaurantId),
             Recipes = await LoadAsync<Recipe>(restaurantId),
             Entrees = await LoadAsync<Entree>(restaurantId),
-            ImportMaps = await LoadAsync<ImportMap>(), // Maps are global
-            UnitConversions = await LoadAsync<UnitConversion>() // Conversions are global
+            ImportMaps = await LoadAsync<ImportMap>(),
+            UnitConversions = await LoadAsync<UnitConversion>()
         };
         return allData;
     }
 
-    public static Task ClearAllDataAsync()
+    public static Task ClearAllOnlineDataAsync()
     {
         var files = Directory.GetFiles(_basePath, "*.json");
         foreach (var file in files)
         {
-            File.Delete(file);
+            if (!Path.GetFileName(file).Contains(SessionService.LocalDataId))
+            {
+                File.Delete(file);
+            }
         }
         return Task.CompletedTask;
     }

@@ -122,7 +122,6 @@ namespace Freecost
                     var recipesToAdd = new List<Recipe>();
                     var entreesToAdd = new List<Entree>();
 
-                    // Process Ingredients
                     var existingIngredientIds = new HashSet<string?>(existingData.Ingredients.Select(i => i.Id));
                     foreach (var imported in importedData.Ingredients)
                     {
@@ -133,34 +132,30 @@ namespace Freecost
                     }
                     existingData.Ingredients.AddRange(ingredientsToAdd);
 
-                    // Process Recipes
                     var existingRecipeIds = new HashSet<string?>(existingData.Recipes.Select(r => r.Id));
                     foreach (var imported in importedData.Recipes)
                     {
                         if (!string.IsNullOrEmpty(imported.Id) && !existingRecipeIds.Contains(imported.Id))
                         {
-                            imported.RestaurantId = restaurantId; // Ensure correct restaurant ID
+                            imported.RestaurantId = restaurantId;
                             recipesToAdd.Add(imported);
                         }
                     }
                     existingData.Recipes.AddRange(recipesToAdd);
 
-                    // Process Entrees
                     var existingEntreeIds = new HashSet<string?>(existingData.Entrees.Select(e => e.Id));
                     foreach (var imported in importedData.Entrees)
                     {
                         if (!string.IsNullOrEmpty(imported.Id) && !existingEntreeIds.Contains(imported.Id))
                         {
-                            imported.RestaurantId = restaurantId; // Ensure correct restaurant ID
+                            imported.RestaurantId = restaurantId;
                             entreesToAdd.Add(imported);
                         }
                     }
                     existingData.Entrees.AddRange(entreesToAdd);
 
-                    // Save all changes to local storage first
                     await LocalStorageService.SaveAllDataAsync(restaurantId, existingData);
 
-                    // If online, also save the new items to Firestore
                     if (!SessionService.IsOffline)
                     {
                         foreach (var item in ingredientsToAdd)
@@ -207,20 +202,20 @@ namespace Freecost
 
         private async void OnLoginClicked(object sender, EventArgs e)
         {
-            if (Application.Current != null)
+            if (Application.Current?.MainPage is Shell shell)
             {
-                await SessionService.Clear(clearCredentials: true);
-                Application.Current.MainPage = new NavigationPage(new LoginPage());
+                await shell.Navigation.PushModalAsync(new NavigationPage(new LoginPage()));
             }
         }
 
         private async void OnLogoutClicked(object sender, EventArgs e)
         {
-            if (Application.Current != null)
+            bool answer = await Shell.Current.DisplayAlert("Logout", "Are you sure you want to log out? Your online data will be synced before switching to offline mode.", "Yes", "No");
+            if (answer)
             {
-                await SessionService.Clear();
-                Application.Current.MainPage = new NavigationPage(new LoginPage());
+                await SessionService.LogoutAsync();
             }
         }
     }
 }
+

@@ -20,7 +20,17 @@ public partial class LocationSelectionPage : ContentPage
         InitializeComponent();
         LocationPicker.ItemsSource = SessionService.PermittedRestaurants;
         LocationPicker.ItemDisplayBinding = new Binding("Name");
-        if (SessionService.PermittedRestaurants?.Count > 0)
+
+        var lastOnlineId = SessionService.LastOnlineRestaurantId;
+        if (!string.IsNullOrEmpty(lastOnlineId) && SessionService.PermittedRestaurants != null)
+        {
+            var lastRestaurant = SessionService.PermittedRestaurants.FirstOrDefault(r => r.Id == lastOnlineId);
+            if (lastRestaurant != null)
+            {
+                LocationPicker.SelectedItem = lastRestaurant;
+            }
+        }
+        else if (SessionService.PermittedRestaurants?.Count > 0)
         {
             LocationPicker.SelectedIndex = 0;
         }
@@ -31,8 +41,6 @@ public partial class LocationSelectionPage : ContentPage
         if (LocationPicker.SelectedItem is Restaurant selectedRestaurant)
         {
             SessionService.CurrentRestaurant = selectedRestaurant;
-            // This is the critical new line that saves your choice reliably
-            Preferences.Set("LastUsedRestaurantId", selectedRestaurant.Id);
             SessionService.SaveSession();
 
             if (Application.Current != null)

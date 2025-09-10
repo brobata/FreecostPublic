@@ -33,16 +33,13 @@ public partial class LoginPage : ContentPage
 
     private async Task DownloadAllDataForRestaurant(string restaurantId, string authToken)
     {
-        // Ingredients
         var serverIngredients = await FirestoreService.GetCollectionAsync<IngredientCsvRecord>($"restaurants/{restaurantId}/ingredients", authToken);
         await LocalStorageService.SaveAsync(serverIngredients, restaurantId);
 
-        // Recipes
         var allServerRecipes = await FirestoreService.GetCollectionAsync<Recipe>("recipes", authToken);
         var restaurantRecipes = allServerRecipes.Where(r => r.RestaurantId == restaurantId).ToList();
         await LocalStorageService.SaveAsync(restaurantRecipes, restaurantId);
 
-        // Entrees
         var allServerEntrees = await FirestoreService.GetCollectionAsync<Entree>("entrees", authToken);
         var restaurantEntrees = allServerEntrees.Where(e => e.RestaurantId == restaurantId).ToList();
         await LocalStorageService.SaveAsync(restaurantEntrees, restaurantId);
@@ -56,8 +53,6 @@ public partial class LoginPage : ContentPage
 
         try
         {
-            await SessionService.Clear();
-
             var requestData = new { email, password, returnSecureToken = true };
             var jsonContent = JsonConvert.SerializeObject(requestData);
             var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -107,7 +102,6 @@ public partial class LoginPage : ContentPage
             SessionService.RefreshToken = refreshToken;
             SessionService.CurrentUserEmail = email;
             SessionService.UserRole = userDoc.TryGetValue("role", out var role) ? role.ToString() : null;
-            SessionService.IsOffline = false;
 
             var permittedRestaurantIds = new List<string>();
             if (userDoc.TryGetValue("Restaurants", out var ids) && ids is JArray idsArray)
@@ -131,12 +125,8 @@ public partial class LoginPage : ContentPage
                 SessionService.PermittedRestaurants = restaurants;
                 await LocalStorageService.SaveAsync(restaurants);
 
-                if (string.IsNullOrEmpty(SessionService.DefaultRestaurantId))
-                {
-                    SessionService.DefaultRestaurantId = restaurants.FirstOrDefault()?.Id;
-                }
-
-                SessionService.CurrentRestaurant = restaurants.FirstOrDefault(r => r.Id == SessionService.DefaultRestaurantId) ?? restaurants.FirstOrDefault();
+                var lastOnlineRestaurantId = Preferences.Get("LastOnlineRestaurantId", string.Empty);
+                SessionService.CurrentRestaurant = restaurants.FirstOrDefault(r => r.Id == lastOnlineRestaurantId) ?? restaurants.FirstOrDefault();
 
                 if (SessionService.CurrentRestaurant?.Id != null && idToken != null)
                 {
@@ -144,11 +134,19 @@ public partial class LoginPage : ContentPage
                 }
 
                 SessionService.SaveSession();
-
                 await UnitConverter.InitializeAsync();
 
                 if (Application.Current != null)
-                    Application.Current.MainPage = new MainShell();
+                {
+                    if (restaurants.Count > 1)
+                    {
+                        Application.Current.MainPage = new LocationSelectionPage();
+                    }
+                    else
+                    {
+                        Application.Current.MainPage = new MainShell();
+                    }
+                }
             }
             else
             {
@@ -164,25 +162,10 @@ public partial class LoginPage : ContentPage
     private async void OnOfflineClicked(object sender, EventArgs e)
     {
         SessionService.StartOfflineSession();
-        var restaurants = await LocalStorageService.LoadAsync<Restaurant>();
-
-        if (restaurants != null && restaurants.Any())
+        if (Application.Current != null)
         {
-            SessionService.PermittedRestaurants = restaurants;
-            if (Application.Current != null) Application.Current.MainPage = new MainShell();
-
-            if (restaurants.Count > 1)
-            {
-                await Shell.Current.GoToAsync(nameof(LocationSelectionPage));
-            }
-            else
-            {
-                SessionService.CurrentRestaurant = restaurants.First();
-            }
-        }
-        else
-        {
-            if (Application.Current != null) Application.Current.MainPage = new MainShell();
+            Application.Current.MainPage = new MainShell();
+            await UsagePopupService.CheckAndShowPopupAsync();
         }
     }
 }
