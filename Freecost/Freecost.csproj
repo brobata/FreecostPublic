@@ -61,6 +61,9 @@
 		<Compile Update="ImportMapManagerPage.xaml.cs">
 			<DependentUpon>ImportMapManagerPage.xaml</DependentUpon>
 		</Compile>
+		<Compile Update="LoadingPage.xaml.cs">
+		  <DependentUpon>LoadingPage.xaml</DependentUpon>
+		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -75,6 +78,9 @@
 		</MauiXaml>
 		<MauiXaml Update="ImportMapManagerPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="LoadingPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="UnitConversionManagerPage.xaml">
 			<Generator>MSBuild:Compile</Generator>

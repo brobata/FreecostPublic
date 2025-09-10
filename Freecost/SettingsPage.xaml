@@ -12,12 +12,6 @@
             HorizontalOptions="Center" />
 
         <Button
-            Text="Sync with Cloud"
-            Clicked="OnSyncClicked"
-            HorizontalOptions="Fill" 
-            IsEnabled="{Binding IsLoggedIn}" />
-
-        <Button
             Text="Import Data"
             Clicked="OnImportClicked"
             HorizontalOptions="Fill" />

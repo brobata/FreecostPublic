@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Freecost.LoadingPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource Gray950}">
+    <VerticalStackLayout 
+        VerticalOptions="Center" 
+        HorizontalOptions="Center"
+        Spacing="20">
+        <ActivityIndicator IsRunning="True" Color="{StaticResource White}" />
+        <Label Text="Loading..." TextColor="{StaticResource White}" />
+    </VerticalStackLayout>
+</ContentPage>

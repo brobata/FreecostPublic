@@ -31,6 +31,23 @@ public partial class LoginPage : ContentPage
         }
     }
 
+    private async Task DownloadAllDataForRestaurant(string restaurantId, string authToken)
+    {
+        // Ingredients
+        var serverIngredients = await FirestoreService.GetCollectionAsync<IngredientCsvRecord>($"restaurants/{restaurantId}/ingredients", authToken);
+        await LocalStorageService.SaveAsync(serverIngredients, restaurantId);
+
+        // Recipes
+        var allServerRecipes = await FirestoreService.GetCollectionAsync<Recipe>("recipes", authToken);
+        var restaurantRecipes = allServerRecipes.Where(r => r.RestaurantId == restaurantId).ToList();
+        await LocalStorageService.SaveAsync(restaurantRecipes, restaurantId);
+
+        // Entrees
+        var allServerEntrees = await FirestoreService.GetCollectionAsync<Entree>("entrees", authToken);
+        var restaurantEntrees = allServerEntrees.Where(e => e.RestaurantId == restaurantId).ToList();
+        await LocalStorageService.SaveAsync(restaurantEntrees, restaurantId);
+    }
+
     private async void OnLoginClicked(object sender, EventArgs e)
     {
         string email = EmailEntry.Text;
@@ -39,6 +56,8 @@ public partial class LoginPage : ContentPage
 
         try
         {
+            await SessionService.Clear();
+
             var requestData = new { email, password, returnSecureToken = true };
             var jsonContent = JsonConvert.SerializeObject(requestData);
             var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -118,6 +137,12 @@ public partial class LoginPage : ContentPage
                 }
 
                 SessionService.CurrentRestaurant = restaurants.FirstOrDefault(r => r.Id == SessionService.DefaultRestaurantId) ?? restaurants.FirstOrDefault();
+
+                if (SessionService.CurrentRestaurant?.Id != null && idToken != null)
+                {
+                    await DownloadAllDataForRestaurant(SessionService.CurrentRestaurant.Id, idToken);
+                }
+
                 SessionService.SaveSession();
 
                 await UnitConverter.InitializeAsync();

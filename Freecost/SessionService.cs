@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Freecost
 {
@@ -11,7 +12,7 @@ namespace Freecost
         // Properties
         public static string? UserUid { get; set; }
         public static string? AuthToken { get; set; }
-        public static string? RefreshToken { get; set; } // Added
+        public static string? RefreshToken { get; set; }
         public static string? UserRole { get; set; }
         public static string? CurrentUserEmail { get; set; }
         public static List<Restaurant>? PermittedRestaurants { get; set; }
@@ -48,7 +49,7 @@ namespace Freecost
         public static void RestoreSession()
         {
             AuthToken = Preferences.Get("AuthToken", string.Empty);
-            RefreshToken = Preferences.Get("RefreshToken", string.Empty); // Added
+            RefreshToken = Preferences.Get("RefreshToken", string.Empty);
             UserUid = Preferences.Get("UserUid", string.Empty);
             UserRole = Preferences.Get("UserRole", string.Empty);
             CurrentUserEmail = Preferences.Get("CurrentUserEmail", string.Empty);
@@ -66,9 +67,9 @@ namespace Freecost
             NotifyStateChanged();
         }
 
-        public static void StartOfflineSession()
+        public static async Task StartOfflineSession()
         {
-            Clear();
+            await Clear(clearCredentials: true); // Clear everything for a true offline start
             IsOffline = true;
             NotifyStateChanged();
         }
@@ -76,7 +77,7 @@ namespace Freecost
         public static void SaveSession()
         {
             Preferences.Set("AuthToken", AuthToken);
-            Preferences.Set("RefreshToken", RefreshToken); // Added
+            Preferences.Set("RefreshToken", RefreshToken);
             Preferences.Set("UserUid", UserUid);
             Preferences.Set("UserRole", UserRole);
             Preferences.Set("CurrentUserEmail", CurrentUserEmail);
@@ -89,27 +90,36 @@ namespace Freecost
                 Preferences.Set("CurrentRestaurant", JsonSerializer.Serialize(CurrentRestaurant));
         }
 
-        public static void Clear()
+        public static async Task Clear(bool clearCredentials = false)
         {
             UserUid = null;
             AuthToken = null;
-            RefreshToken = null; // Added
+            RefreshToken = null;
             UserRole = null;
             CurrentUserEmail = null;
             PermittedRestaurants = null;
             CurrentRestaurant = null;
             IsOffline = false;
             DefaultRestaurantId = null;
-            Preferences.Remove("AuthToken");
 
             Preferences.Remove("AuthToken");
-            Preferences.Remove("RefreshToken"); // Added
+            Preferences.Remove("RefreshToken");
             Preferences.Remove("UserUid");
             Preferences.Remove("UserRole");
             Preferences.Remove("CurrentUserEmail");
             Preferences.Remove("PermittedRestaurants");
             Preferences.Remove("CurrentRestaurant");
             Preferences.Remove("DefaultRestaurantId");
+
+            if (clearCredentials)
+            {
+                Preferences.Remove("RememberMe");
+                Preferences.Remove("Email");
+                Preferences.Remove("Password");
+            }
+
+            // Clear local data only when logging out completely or starting fresh offline
+            await LocalStorageService.ClearAllDataAsync();
 
             NotifyStateChanged();
         }

@@ -6,25 +6,13 @@ public partial class App : Application
     {
         InitializeComponent();
 
-        MainPage = new MainShell();
+        // Set a temporary loading page to prevent the app from crashing on startup
+        MainPage = new LoadingPage();
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
         var window = base.CreateWindow(activationState);
-
-        // Sync when the app is sent to the background
-        window.Stopped += async (s, e) =>
-        {
-            await SettingsPage.SyncDataAsync();
-        };
-
-        // Sync when the app is being closed on desktop platforms
-        window.Destroying += async (s, e) =>
-        {
-            await SettingsPage.SyncDataAsync();
-        };
-
         return window;
     }
 
@@ -32,6 +20,7 @@ public partial class App : Application
     {
         base.OnStart();
 
+        // All startup logic is now safely handled here
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             try
@@ -45,55 +34,34 @@ public partial class App : Application
                     bool refreshedSuccessfully = await AuthService.RefreshAuthTokenIfNeededAsync();
                     if (!refreshedSuccessfully)
                     {
+                        MainPage = new NavigationPage(new LoginPage());
                         return;
                     }
-                    if (SessionService.CurrentRestaurant != null)
-                    {
-                        MainPage = new MainShell();
-                    }
-                    else if (SessionService.PermittedRestaurants != null && SessionService.PermittedRestaurants.Count > 1)
+
+                    if (SessionService.CurrentRestaurant == null && SessionService.PermittedRestaurants != null && SessionService.PermittedRestaurants.Count > 1)
                     {
                         MainPage = new LocationSelectionPage();
                     }
-                    else
+                    else if (SessionService.CurrentRestaurant != null)
                     {
                         MainPage = new MainShell();
+                    }
+                    else
+                    {
+                        await SessionService.Clear();
+                        MainPage = new NavigationPage(new LoginPage());
+                        await MainPage.DisplayAlert("No Locations", "Your account is not assigned to any locations. Please contact support.", "OK");
                     }
                 }
                 else
                 {
-                    var offlineRestaurants = await LocalStorageService.LoadAsync<Restaurant>();
-                    if (offlineRestaurants.Any())
-                    {
-                        SessionService.StartOfflineSession();
-                        SessionService.PermittedRestaurants = offlineRestaurants;
-                        if (offlineRestaurants.Count > 1)
-                        {
-                            MainPage = new LocationSelectionPage();
-                        }
-                        else
-                        {
-                            SessionService.CurrentRestaurant = offlineRestaurants.First();
-                            MainPage = new MainShell();
-                        }
-                    }
-                    else
-                    {
-                        MainPage = new NavigationPage(new LoginPage());
-                    }
+                    MainPage = new NavigationPage(new LoginPage());
                 }
             }
             catch (Exception)
             {
-                // If any network call fails, simply go to offline mode.
-                // The UI will reflect this status text automatically.
-                SessionService.StartOfflineSession();
-                var offlineRestaurants = await LocalStorageService.LoadAsync<Restaurant>();
-                if (offlineRestaurants.Any())
-                {
-                    SessionService.PermittedRestaurants = offlineRestaurants;
-                }
-                MainPage = new MainShell();
+                MainPage = new NavigationPage(new LoginPage());
+                await MainPage.DisplayAlert("Startup Error", "Could not connect to online services. You can work offline if you have local data.", "OK");
             }
         });
     }

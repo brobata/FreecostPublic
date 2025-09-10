@@ -39,62 +39,6 @@ namespace Freecost
             OnPropertyChanged(nameof(IsNotLoggedIn));
         }
 
-        public static async Task SyncDataAsync()
-        {
-            var restaurantId = SessionService.CurrentRestaurant?.Id;
-            if (SessionService.IsOffline || restaurantId == null)
-            {
-                return; // Can't sync if offline or no restaurant is selected
-            }
-
-            // --- UPLOAD LOCAL CHANGES ---
-            // Ingredients
-            var localIngredients = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
-            foreach (var ingredient in localIngredients)
-            {
-                await FirestoreService.SetDocumentAsync($"restaurants/{restaurantId}/ingredients/{ingredient.Id}", ingredient, SessionService.AuthToken);
-            }
-
-            // Recipes
-            var localRecipes = await LocalStorageService.LoadAsync<Recipe>(restaurantId);
-            foreach (var recipe in localRecipes)
-            {
-                await FirestoreService.SetDocumentAsync($"recipes/{recipe.Id}", recipe, SessionService.AuthToken);
-            }
-
-            // Entrees
-            var localEntrees = await LocalStorageService.LoadAsync<Entree>(restaurantId);
-            foreach (var entree in localEntrees)
-            {
-                await FirestoreService.SetDocumentAsync($"entrees/{entree.Id}", entree, SessionService.AuthToken);
-            }
-
-            // --- DOWNLOAD MERGED DATA ---
-            var serverIngredients = await FirestoreService.GetCollectionAsync<IngredientCsvRecord>($"restaurants/{restaurantId}/ingredients", SessionService.AuthToken);
-            await LocalStorageService.SaveAsync(serverIngredients, restaurantId);
-
-            var allServerRecipes = await FirestoreService.GetCollectionAsync<Recipe>("recipes", SessionService.AuthToken);
-            var restaurantRecipes = allServerRecipes.Where(r => r.RestaurantId == restaurantId).ToList();
-            await LocalStorageService.SaveAsync(restaurantRecipes, restaurantId);
-
-            var allServerEntrees = await FirestoreService.GetCollectionAsync<Entree>("entrees", SessionService.AuthToken);
-            var restaurantEntrees = allServerEntrees.Where(e => e.RestaurantId == restaurantId).ToList();
-            await LocalStorageService.SaveAsync(restaurantEntrees, restaurantId);
-        }
-
-        private async void OnSyncClicked(object sender, EventArgs e)
-        {
-            if (SessionService.IsOffline || SessionService.CurrentRestaurant?.Id == null)
-            {
-                await DisplayAlert("Sync Unavailable", "You must be online and have a location selected to sync.", "OK");
-                return;
-            }
-
-            await DisplayAlert("Syncing", "Uploading local changes and downloading server updates.", "OK");
-            await SyncDataAsync();
-            await DisplayAlert("Sync Complete", "Your data has been synced with the server.", "OK");
-        }
-
         private async void OnExportClicked(object sender, EventArgs e)
         {
             var restaurantId = SessionService.CurrentRestaurant?.Id;
@@ -261,21 +205,21 @@ namespace Freecost
             }
         }
 
-        private void OnLoginClicked(object sender, EventArgs e)
+        private async void OnLoginClicked(object sender, EventArgs e)
         {
             if (Application.Current != null)
             {
-                SessionService.Clear();
+                await SessionService.Clear(clearCredentials: true);
                 Application.Current.MainPage = new NavigationPage(new LoginPage());
             }
         }
 
-        private void OnLogoutClicked(object sender, EventArgs e)
+        private async void OnLogoutClicked(object sender, EventArgs e)
         {
             if (Application.Current != null)
             {
-                SessionService.Clear();
-                Application.Current.MainPage = new MainShell();
+                await SessionService.Clear();
+                Application.Current.MainPage = new NavigationPage(new LoginPage());
             }
         }
     }

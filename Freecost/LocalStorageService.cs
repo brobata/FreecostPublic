@@ -58,4 +58,14 @@ public static class LocalStorageService
         };
         return allData;
     }
+
+    public static Task ClearAllDataAsync()
+    {
+        var files = Directory.GetFiles(_basePath, "*.json");
+        foreach (var file in files)
+        {
+            File.Delete(file);
+        }
+        return Task.CompletedTask;
+    }
 }

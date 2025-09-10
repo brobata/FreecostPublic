@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Input;
+using CommunityToolkit.Maui.Behaviors;
+using CommunityToolkit.Maui.Core;
 
 namespace Freecost
 {
@@ -26,11 +28,19 @@ namespace Freecost
         {
             InitializeComponent();
 
+#if ANDROID || IOS
+            this.Behaviors.Add(new StatusBarBehavior
+            {
+                StatusBarColor = Color.FromArgb("#4A4A4A"), // This is the 'Secondary' color
+                StatusBarStyle = StatusBarStyle.LightContent
+            });
+#endif
+
             GoToSettingsCommand = new Command(async () => await OnSettingsClicked());
             ChangeLocationCommand = new Command(OnChangeLocationClicked);
             ExitCommand = new Command(OnExitClicked);
-            LoginCommand = new Command(OnLoginClicked);
-            LogoutCommand = new Command(OnLogoutClicked);
+            LoginCommand = new Command(async () => await OnLoginClicked());
+            LogoutCommand = new Command(async () => await OnLogoutClicked());
             GoToAdminCommand = new Command(async () => await GoToAdminPage());
 
             BindingContext = this;
@@ -46,37 +56,8 @@ namespace Freecost
             if (_isFirstAppearance)
             {
                 _isFirstAppearance = false;
-                await CheckSessionAndNavigate();
                 await UsagePopupService.CheckAndShowPopupAsync();
             }
-        }
-
-        private async Task CheckSessionAndNavigate()
-        {
-            var savedToken = Preferences.Get("AuthToken", string.Empty);
-            if (!string.IsNullOrEmpty(savedToken))
-            {
-                SessionService.RestoreSession();
-                var lastUsedId = Preferences.Get("LastUsedRestaurantId", string.Empty);
-                if (SessionService.PermittedRestaurants != null && SessionService.PermittedRestaurants.Any())
-                {
-                    var lastUsedRestaurant = SessionService.PermittedRestaurants.FirstOrDefault(r => r.Id == lastUsedId);
-                    SessionService.CurrentRestaurant = lastUsedRestaurant ?? SessionService.PermittedRestaurants.FirstOrDefault();
-                }
-            }
-            else
-            {
-                var offlineRestaurants = await LocalStorageService.LoadAsync<Restaurant>();
-                if (offlineRestaurants.Any())
-                {
-                    SessionService.StartOfflineSession();
-                    SessionService.PermittedRestaurants = offlineRestaurants;
-                    var lastUsedId = Preferences.Get("LastUsedRestaurantId", string.Empty);
-                    var lastUsedRestaurant = offlineRestaurants.FirstOrDefault(r => r.Id == lastUsedId);
-                    SessionService.CurrentRestaurant = lastUsedRestaurant ?? offlineRestaurants.FirstOrDefault();
-                }
-            }
-            OnPropertyChanged(nameof(CurrentLocationName));
         }
 
         private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
@@ -107,27 +88,26 @@ namespace Freecost
                 Application.Current.MainPage = new LocationSelectionPage();
         }
 
-        private void OnLoginClicked()
+        private async Task OnLoginClicked()
         {
             if (Application.Current != null)
             {
-                SessionService.Clear();
+                await SessionService.Clear();
                 Application.Current.MainPage = new NavigationPage(new LoginPage());
             }
         }
 
-        private void OnLogoutClicked()
+        private async Task OnLogoutClicked()
         {
             if (Application.Current != null)
             {
-                SessionService.Clear();
-                Application.Current.MainPage = new MainShell();
+                await SessionService.Clear();
+                Application.Current.MainPage = new NavigationPage(new LoginPage());
             }
         }
 
-        private async void OnExitClicked()
+        private void OnExitClicked()
         {
-            await SettingsPage.SyncDataAsync();
             Application.Current?.Quit();
         }
     }

@@ -81,7 +81,6 @@ namespace Freecost
                 return;
             }
 
-            // Always load from local storage first for immediate UI updates.
             var ingredientsList = await LocalStorageService.LoadAsync<IngredientCsvRecord>(restaurantId);
 
             _allIngredients = ingredientsList.Select(MapToDisplayRecord).ToList();
@@ -202,8 +201,6 @@ namespace Freecost
             bool answer = await DisplayAlert("Confirm Delete", $"Are you sure you want to delete {_selectedIngredients.Count} ingredient(s)?", "Yes", "No");
             if (answer)
             {
-                _allIngredients.RemoveAll(ing => _selectedIngredients.Contains(ing));
-                await LocalStorageService.SaveAsync(_allIngredients.Cast<IngredientCsvRecord>().ToList(), restaurantId);
                 if (!SessionService.IsOffline && restaurantId != null)
                 {
                     foreach (var ingredient in _selectedIngredients)
@@ -212,6 +209,10 @@ namespace Freecost
                             await FirestoreService.DeleteDocumentAsync($"restaurants/{restaurantId}/ingredients/{ingredient.Id}", SessionService.AuthToken);
                     }
                 }
+
+                _allIngredients.RemoveAll(ing => _selectedIngredients.Any(s => s.Id == ing.Id));
+                await LocalStorageService.SaveAsync(_allIngredients.Cast<IngredientCsvRecord>().ToList(), restaurantId);
+
                 _selectedIngredients.Clear();
                 await LoadIngredients();
             }
